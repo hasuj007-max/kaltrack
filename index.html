@@ -240,6 +240,9 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
 /* favoritos */
 .favbtn{border:none;background:none;color:var(--dim);font-size:18px;cursor:pointer;flex-shrink:0;padding:2px 4px;line-height:1}
 .favbtn.on{color:var(--yellow)}
+.machint{font-size:11.5px;font-weight:700;margin:-4px 0 12px;color:var(--mut)}
+.machint.ok{color:var(--green)}
+.machint.warn{color:var(--orange)}
 /* toggle */
 .togglerow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:2px 0 14px}
 .togglerow b{font-size:13.5px;display:block}
@@ -358,6 +361,7 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
         <div class="field"><label>Carbos (g)</label><input type="number" inputmode="numeric" id="s-c"></div>
         <div class="field"><label>Grasa (g)</label><input type="number" inputmode="numeric" id="s-f"></div>
       </div>
+      <div class="machint" id="machint"></div>
       <div class="togglerow">
         <div><b>Sumar ejercicio a restantes</b><small>Si quemas 300 kcal, tus calorías disponibles del día suben 300</small></div>
         <button class="tgl" id="extoggle" onclick="toggleExAdd()"></button>
@@ -1268,6 +1272,7 @@ function renderSettings(){
   $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f;
   $('#s-w').value=DB.profile.weight??''; $('#s-wt').value=DB.profile.target??'';
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
+  updMacHint();
   $('#myfoods').innerHTML = DB.customFoods.length ? DB.customFoods.map(f=>`<div class="lrow">
       <div class="lemoji">${f.e}</div>
       <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.portion} · ${fmt(f.kcal)} kcal</div></div>
@@ -1280,12 +1285,39 @@ function renderSettings(){
       <button class="ldel" onclick="delCustomEx('${x.id}')">✕</button>
     </div>`).join('') : '<div class="emptylog">Aún no creas ejercicios propios.</div>';
 }
+// reparte las kcal de la meta entre macros conservando la proporción actual (4/4/9 kcal por g)
+function macrosFromCal(cal){
+  const g=DB.goals;
+  const pk=g.p*4, ck=g.c*4, fk=g.f*9, tot=pk+ck+fk;
+  const rp = tot>0 ? pk/tot : 0.30;   // sin proporción previa: 30% prot / 25% grasa / resto carbos
+  const rf = tot>0 ? fk/tot : 0.25;
+  const p=Math.round(cal*rp/4), f=Math.round(cal*rf/9);
+  const c=Math.max(0, Math.round((cal-p*4-f*9)/4)); // carbos absorben el redondeo: suma exacta
+  return {p,c,f};
+}
+function updMacHint(){
+  const el=$('#machint');
+  const cal=parseInt($('#s-cal').value)||0;
+  const p=parseInt($('#s-p').value)||0, c=parseInt($('#s-c').value)||0, f=parseInt($('#s-f').value)||0;
+  const sum=p*4+c*4+f*9;
+  if(!cal||!sum){ el.textContent=''; el.className='machint'; return; }
+  const ok=Math.abs(sum-cal)<=cal*0.05;
+  el.textContent=`Tus macros suman ${fmt(sum)} kcal` + (ok ? ' · coinciden con tu meta ✓' : ` · tu meta es ${fmt(cal)} ⚠`);
+  el.className='machint '+(ok?'ok':'warn');
+}
 function saveGoals(){
   const cal=parseInt($('#s-cal').value), p=parseInt($('#s-p').value),
         c=parseInt($('#s-c').value), f=parseInt($('#s-f').value);
   if(!cal||cal<=0){toast('Meta de calorías inválida');return;}
-  DB.goals={cal, p:p>0?p:DB.goals.p, c:c>0?c:DB.goals.c, f:f>0?f:DB.goals.f};
-  save(); renderAll(); toast('Metas guardadas 🎯');
+  const macrosTocados = p!==DB.goals.p || c!==DB.goals.c || f!==DB.goals.f;
+  if(cal!==DB.goals.cal && !macrosTocados){
+    DB.goals=Object.assign({cal}, macrosFromCal(cal));
+    toast('Meta y macros ajustados 🎯');
+  }else{
+    DB.goals={cal, p:p>0?p:DB.goals.p, c:c>0?c:DB.goals.c, f:f>0?f:DB.goals.f};
+    toast('Metas guardadas 🎯');
+  }
+  save(); renderAll();
 }
 function saveProfile(){
   const w=parseFloat($('#s-w').value), wt=parseFloat($('#s-wt').value);
@@ -1298,13 +1330,21 @@ function toggleExAdd(){
   toast(DB.exAdd ? 'El ejercicio suma a tus restantes 🔥' : 'Restantes = meta − consumidas');
 }
 // auto-guardado: las metas y el perfil se aplican al salir del campo, sin requerir el botón
-[['s-cal','cal'],['s-p','p'],['s-c','c'],['s-f','f']].forEach(([id,key])=>{
+$('#s-cal').addEventListener('change',()=>{
+  const v=parseInt($('#s-cal').value);
+  if(v>0){
+    DB.goals=Object.assign({cal:v}, macrosFromCal(v)); // macros se reajustan en proporción
+    save(); renderSettings(); renderHome(); toast('Meta y macros ajustados 🎯');
+  } else renderSettings(); // valor inválido: restaurar el guardado
+});
+[['s-p','p'],['s-c','c'],['s-f','f']].forEach(([id,key])=>{
   $('#'+id).addEventListener('change',()=>{
     const v=parseInt($('#'+id).value);
-    if(v>0){ DB.goals[key]=v; save(); renderHome(); toast('Meta actualizada 🎯'); }
-    else renderSettings(); // valor inválido: restaurar el guardado
+    if(v>0){ DB.goals[key]=v; save(); renderHome(); updMacHint(); toast('Meta actualizada 🎯'); }
+    else renderSettings();
   });
 });
+['s-cal','s-p','s-c','s-f'].forEach(id=>$('#'+id).addEventListener('input',updMacHint));
 ['s-w','s-wt'].forEach(id=>$('#'+id).addEventListener('change',()=>saveProfile()));
 function resetAll(){
   if(!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
