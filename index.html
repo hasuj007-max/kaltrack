@@ -136,6 +136,8 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
 /* ===== registros del día ===== */
 .lrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
 .lrow:last-child{border-bottom:none}
+.lrow.tap{cursor:pointer}
+.lrow.tap:active{opacity:.55}
 .lrow .lemoji{width:40px;height:40px;border-radius:13px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
 .lrow .linfo{flex:1;min-width:0}
 .lrow .lname{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -240,6 +242,10 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
 /* favoritos */
 .favbtn{border:none;background:none;color:var(--dim);font-size:18px;cursor:pointer;flex-shrink:0;padding:2px 4px;line-height:1}
 .favbtn.on{color:var(--yellow)}
+.projmain{font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.35}
+.projmain .hl{color:var(--green)}
+.projsub{font-size:12.5px;color:var(--mut);font-weight:600;margin-top:6px;line-height:1.45}
+.badge.warn{color:var(--orange)}
 .machint{font-size:11.5px;font-weight:700;margin:-4px 0 12px;color:var(--mut)}
 .machint.ok{color:var(--green)}
 .machint.warn{color:var(--orange)}
@@ -329,6 +335,12 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
       </div>
     </div>
 
+    <div class="card" id="projcard" style="display:none">
+      <div class="cardhead"><h3>Proyección</h3><span class="badge" id="projrate">—</span></div>
+      <div class="projmain" id="projmain">—</div>
+      <div class="projsub" id="projsub"></div>
+    </div>
+
     <div class="motiv" id="motiv">¡Gran trabajo! La constancia es la clave y la estás dominando. 💪</div>
 
     <div class="card">
@@ -390,6 +402,12 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
     <div class="card">
       <div class="loglist" id="myex"></div>
       <button class="btn dark" style="margin-top:10px" onclick="openExSheet('create')">+ Crear ejercicio</button>
+    </div>
+
+    <div class="set-section">La app</div>
+    <div class="card" id="installcard">
+      <div class="projsub" id="installtxt" style="margin:0 0 10px"></div>
+      <button class="btn" id="installbtn" style="display:none" onclick="doInstall()">📲 Instalar app</button>
     </div>
 
     <div class="set-section">Datos</div>
@@ -465,7 +483,7 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
           <span style="color:var(--orange)"><b id="fd-c">0g</b>Carbs</span>
           <span style="color:var(--red)"><b id="fd-f">0g</b>Grasa</span>
         </div>
-        <button class="btn" style="margin-top:12px" onclick="confirmFood()">Agregar al registro</button>
+        <button class="btn" style="margin-top:12px" id="fd-confirm" onclick="confirmFood()">Agregar al registro</button>
       </div>
       <div id="food-create" style="display:none">
         <div class="field"><label>Nombre</label><input id="cf-name" placeholder="Ej. Ensalada de la abuela"></div>
@@ -510,7 +528,7 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
           <button onclick="chgMin(5)">+</button>
         </div>
         <div class="macromini"><span style="color:var(--green)"><b id="ed-kcal">0</b>kcal quemadas</span></div>
-        <button class="btn" style="margin-top:12px" onclick="confirmEx()">Agregar al registro</button>
+        <button class="btn" style="margin-top:12px" id="ed-confirm" onclick="confirmEx()">Agregar al registro</button>
       </div>
       <div id="ex-create" style="display:none">
         <div class="field"><label>Nombre</label><input id="ce-name" placeholder="Ej. CrossFit"></div>
@@ -736,6 +754,7 @@ function closeSheets(){
   $('#overlay').classList.remove('on');
   document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));
   $('#fab').classList.remove('x');
+  editingEntry=null;
 }
 function toggleFab(){
   if($('#sheet-fab').classList.contains('on')){closeSheets();}
@@ -815,11 +834,11 @@ function renderHome(){
   if(!l.foods.length && !l.ex.length){
     $('#loglist').innerHTML='<div class="emptylog">Sin registros este día.<br>Toca el botón + para agregar comida o ejercicio.</div>';
   }else{
-    const frow=(f,i)=>`<div class="lrow">
+    const frow=(f,i)=>`<div class="lrow tap" onclick="editFoodEntry('${k}',${i})">
         <div class="lemoji">${f.e}</div>
         <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.qty} × ${f.portion} · P ${Math.round(f.p)} · C ${Math.round(f.c)} · G ${Math.round(f.f)}</div></div>
         <div class="lkcal">${fmt(f.kcal)}</div>
-        <button class="ldel" onclick="delEntry('${k}','foods',${i})">✕</button>
+        <button class="ldel" onclick="event.stopPropagation();delEntry('${k}','foods',${i})">✕</button>
       </div>`;
     let html='';
     MEALS.forEach(m=>{
@@ -830,11 +849,11 @@ function renderHome(){
     });
     if(l.ex.length){
       html+=`<div class="mealhead">🏃 Ejercicio<b>−${fmt(t.burn)} kcal</b></div>`
-          + l.ex.map((e,i)=>`<div class="lrow">
+          + l.ex.map((e,i)=>`<div class="lrow tap" onclick="editExEntry('${k}',${i})">
         <div class="lemoji">${e.e}</div>
         <div class="linfo"><div class="lname">${e.n}</div><div class="lsub">${e.min} min</div></div>
         <div class="lkcal burn">−${fmt(e.kcal)}</div>
-        <button class="ldel" onclick="delEntry('${k}','ex',${i})">✕</button>
+        <button class="ldel" onclick="event.stopPropagation();delEntry('${k}','ex',${i})">✕</button>
       </div>`).join('');
     }
     $('#loglist').innerHTML=html;
@@ -935,12 +954,44 @@ function renderFoodResults(q){
 }
 function showFoodDetail(f){
   foodSel=f; foodQty=1; mealSel=defaultMeal(); syncMealSeg();
+  editingEntry=null;
+  $('#fd-confirm').textContent='Agregar al registro';
+  $('#food-title').textContent='Agregar comida';
   $('#food-search').style.display='none';
   $('#food-create').style.display='none';
   $('#food-detail').style.display='block';
   $('#fd-emoji').textContent=f.e; $('#fd-name').textContent=f.n;
   $('#fd-portion').textContent=`${f.portion} · ${fmt(f.kcal)} kcal por porción`;
   updFoodDetail();
+}
+/* ---- editar un registro ya guardado ---- */
+let editingEntry=null; // {type:'foods'|'ex', k, i}
+// valores por porción: del catálogo si el alimento existe, si no derivados del propio registro
+function entryBase(f){
+  const cat = f.fid ? foodById(f.fid) : null;
+  if(cat) return cat;
+  const q=f.qty||1;
+  return {n:f.n, e:f.e, portion:f.portion, kcal:f.kcal/q, p:f.p/q, c:f.c/q, f:f.f/q, id:null};
+}
+function editFoodEntry(k,i){
+  const entry=getLog(k).foods[i]; if(!entry) return;
+  openSheet('sheet-food'); foodTab('search');
+  showFoodDetail(entryBase(entry));
+  foodQty=entry.qty||1; mealSel=entry.meal||'comida'; syncMealSeg(); updFoodDetail();
+  editingEntry={type:'foods',k,i};
+  $('#fd-confirm').textContent='Guardar cambios';
+  $('#food-title').textContent='Editar comida';
+}
+function editExEntry(k,i){
+  const entry=getLog(k).ex[i]; if(!entry) return;
+  const cat=allEx().find(x=>x.n===entry.n);
+  const factor=(DB.profile.weight||70)/70;
+  const base=cat||{n:entry.n, e:entry.e, rate:entry.kcal/((entry.min||1)*factor), id:null};
+  openSheet('sheet-ex'); exTab('search');
+  showExDetail(base);
+  exMin=entry.min||30; updExDetail();
+  editingEntry={type:'ex',k,i};
+  $('#ed-confirm').textContent='Guardar cambios';
 }
 function chgQty(d){ foodQty=Math.max(0.5,Math.round((foodQty+d)*2)/2); updFoodDetail(); }
 function updFoodDetail(){
@@ -951,13 +1002,20 @@ function updFoodDetail(){
   $('#fd-f').textContent=(Math.round(foodSel.f*foodQty*10)/10)+'g';
 }
 function confirmFood(){
-  const k=dkey(selDate);
-  ensureLog(k).foods.push({
+  const ed=editingEntry;
+  const k = ed ? ed.k : dkey(selDate);
+  const item={
     n:foodSel.n, e:foodSel.e, portion:foodSel.portion, qty:foodQty, meal:mealSel, fid:foodSel.id||null,
     kcal:Math.round(foodSel.kcal*foodQty), p:foodSel.p*foodQty, c:foodSel.c*foodQty, f:foodSel.f*foodQty
-  });
-  if(foodSel.id) DB.recents=[foodSel.id, ...DB.recents.filter(x=>x!==foodSel.id)].slice(0,12);
-  save(); closeSheets(); renderAll(); toast(`${foodSel.e} ${foodSel.n} agregado`);
+  };
+  if(ed){
+    ensureLog(k).foods[ed.i]=item;
+  }else{
+    ensureLog(k).foods.push(item);
+    if(foodSel.id) DB.recents=[foodSel.id, ...DB.recents.filter(x=>x!==foodSel.id)].slice(0,12);
+  }
+  save(); closeSheets(); renderAll();
+  toast(ed ? 'Registro actualizado ✓' : `${foodSel.e} ${foodSel.n} agregado`);
 }
 function saveCustomFood(){
   const n=$('#cf-name').value.trim(), portion=$('#cf-portion').value.trim()||'1 porción';
@@ -1021,6 +1079,7 @@ function renderExResults(q){
 }
 function showExDetail(x){
   exSel=x; exMin=30;
+  editingEntry=null; $('#ed-confirm').textContent='Agregar al registro';
   $('#ex-search').style.display='none';
   $('#ex-detail').style.display='block';
   $('#ed-emoji').textContent=x.e; $('#ed-name').textContent=x.n;
@@ -1035,9 +1094,12 @@ function updExDetail(){
   $('#ed-kcal').textContent=fmt(exRate(exSel)*exMin);
 }
 function confirmEx(){
-  const k=dkey(selDate);
-  ensureLog(k).ex.push({n:exSel.n,e:exSel.e,min:exMin,kcal:Math.round(exRate(exSel)*exMin)});
-  save(); closeSheets(); renderAll(); toast(`${exSel.e} ${exSel.n} agregado`);
+  const ed=editingEntry;
+  const k = ed ? ed.k : dkey(selDate);
+  const item={n:exSel.n,e:exSel.e,min:exMin,kcal:Math.round(exRate(exSel)*exMin)};
+  if(ed) ensureLog(k).ex[ed.i]=item; else ensureLog(k).ex.push(item);
+  save(); closeSheets(); renderAll();
+  toast(ed ? 'Registro actualizado ✓' : `${exSel.e} ${exSel.n} agregado`);
 }
 function saveCustomEx(){
   const n=$('#ce-name').value.trim(), rate=parseFloat($('#ce-rate').value);
@@ -1223,8 +1285,50 @@ function renderProgress(){
     tr.className='trend '+(d>0?'up':d<0?'down':'flat');
   }else{ tr.textContent='—'; tr.className='trend flat'; }
 
+  renderProjection();
   renderWeightChart();
   renderCalChart();
+}
+
+/* Proyección: regresión lineal sobre los pesos de los últimos 60 días.
+   Se basa en tu tendencia REAL medida, no en un modelo teórico de déficit. */
+function renderProjection(){
+  const card=$('#projcard');
+  const target=DB.profile.target;
+  const lim=new Date(today()); lim.setDate(lim.getDate()-60);
+  const pts=DB.weights.filter(x=>x.d>=dkey(lim));
+  if(target==null || pts.length<2){ card.style.display='none'; return; }
+  const t0=fromKey(pts[0].d).getTime();
+  const X=pts.map(x=>(fromKey(x.d).getTime()-t0)/86400000); // días
+  const Y=pts.map(x=>x.kg);
+  const spanDias=X[X.length-1];
+  if(spanDias<7){ card.style.display='none'; return; } // muy pocos datos para una tendencia honesta
+  const n=X.length, sx=X.reduce((a,b)=>a+b,0), sy=Y.reduce((a,b)=>a+b,0);
+  const sxy=X.reduce((a,x,i)=>a+x*Y[i],0), sxx=X.reduce((a,x)=>a+x*x,0);
+  const den=n*sxx-sx*sx;
+  if(!den){ card.style.display='none'; return; }
+  const kgPorDia=(n*sxy-sx*sy)/den;
+  const actual=DB.profile.weight ?? Y[Y.length-1];
+  const falta=target-actual;              // negativo si hay que bajar
+  const kgSem=kgPorDia*7;
+  card.style.display='block';
+  $('#projrate').textContent=(kgSem>=0?'↑ +':'↓ ')+ (Math.round(Math.abs(kgSem)*100)/100) +' kg/sem';
+  $('#projrate').className='badge '+(Math.abs(falta)<0.3 ? 'green' : (falta<0)===(kgSem<0) ? 'green' : 'warn');
+  if(Math.abs(falta)<0.3){
+    $('#projmain').innerHTML='🎉 <span class="hl">¡Meta alcanzada!</span>';
+    $('#projsub').textContent=`Estás en ${Math.round(actual*10)/10} kg, tu objetivo era ${target} kg.`;
+    return;
+  }
+  if(Math.abs(kgSem)<0.05 || (falta<0)!==(kgSem<0)){
+    $('#projmain').textContent = Math.abs(kgSem)<0.05 ? 'Tu peso está estable' : 'Tu tendencia va en sentido contrario a tu meta';
+    $('#projsub').textContent = `Te faltan ${Math.abs(Math.round(falta*10)/10)} kg para llegar a ${target} kg. Ajusta tu meta de calorías o tu actividad para retomar el rumbo.`;
+    return;
+  }
+  const dias=Math.ceil(falta/kgPorDia);
+  const fecha=new Date(today()); fecha.setDate(fecha.getDate()+dias);
+  const semanas=Math.round(dias/7);
+  $('#projmain').innerHTML=`A este ritmo llegas a <span class="hl">${target} kg</span> el <span class="hl">${fecha.getDate()} ${MESES[fecha.getMonth()]} ${fecha.getFullYear()}</span>`;
+  $('#projsub').textContent=`Faltan ${Math.abs(Math.round(falta*10)/10)} kg · unas ${semanas} semana${semanas===1?'':'s'}. Calculado con tus ${pts.length} pesajes de los últimos ${Math.round(spanDias)} días.`;
 }
 
 function renderWeightChart(){
@@ -1273,6 +1377,7 @@ function renderSettings(){
   $('#s-w').value=DB.profile.weight??''; $('#s-wt').value=DB.profile.target??'';
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
   updMacHint();
+  renderInstall();
   $('#myfoods').innerHTML = DB.customFoods.length ? DB.customFoods.map(f=>`<div class="lrow">
       <div class="lemoji">${f.e}</div>
       <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.portion} · ${fmt(f.kcal)} kcal</div></div>
@@ -1352,6 +1457,38 @@ function resetAll(){
   DB=JSON.parse(JSON.stringify(DEFAULTS));
   selDate=today(); renderAll(); toast('Datos borrados');
   openOnboard();
+}
+
+/* ================== INSTALACIÓN (PWA) ================== */
+let deferredPrompt=null;
+const isStandalone = ()=> window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+const isIOS = ()=> /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e; renderInstall();
+});
+window.addEventListener('appinstalled', ()=>{ deferredPrompt=null; renderInstall(); toast('App instalada 🎉'); });
+function renderInstall(){
+  const txt=$('#installtxt'), btn=$('#installbtn');
+  if(isStandalone()){
+    txt.textContent='✅ Ya estás usando KalTrack como app instalada. Se actualiza sola al abrirla con internet.';
+    btn.style.display='none';
+  }else if(deferredPrompt){
+    txt.textContent='Instálala para abrirla desde tu pantalla de inicio, a pantalla completa y sin internet.';
+    btn.style.display='flex';
+  }else if(isIOS()){
+    txt.innerHTML='Para instalarla en tu iPhone: abre esta página en <b>Safari</b>, toca <b>Compartir</b> (el cuadro con la flecha ↑) y elige <b>“Agregar a pantalla de inicio”</b>.';
+    btn.style.display='none';
+  }else{
+    txt.textContent='Puedes instalarla desde el menú de tu navegador (busca “Instalar app” o “Agregar a pantalla de inicio”).';
+    btn.style.display='none';
+  }
+}
+async function doInstall(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const {outcome}=await deferredPrompt.userChoice;
+  deferredPrompt=null; renderInstall();
+  if(outcome!=='accepted') toast('Instalación cancelada');
 }
 
 /* ================== RESPALDO ================== */
