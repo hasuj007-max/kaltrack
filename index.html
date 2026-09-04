@@ -260,6 +260,13 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
 .toastwrap{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center;z-index:90;pointer-events:none}
 .toast{background:#fff;color:#111;font-size:13px;font-weight:700;padding:10px 18px;border-radius:99px;box-shadow:0 8px 24px #000a;animation:toastin 2.4s ease forwards}
 @keyframes toastin{0%{opacity:0;transform:translateY(-14px)}10%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-10px)}}
+/* confeti de celebración */
+.confetti{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;opacity:.95;animation:confettifall 1.4s ease-in forwards}
+@keyframes confettifall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(540px) rotate(560deg);opacity:0}}
+/* tira de días: header con volver a hoy + animación de swipe */
+.stripbar{display:flex;justify-content:flex-end;margin-bottom:2px;min-height:18px}
+.striphome{border:none;background:none;color:var(--mut);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px}
+.daystrip.swipeanim{animation:fadeIn .22s ease}
 </style>
 </head>
 <body>
@@ -267,6 +274,7 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
 
   <!-- ============ INICIO ============ -->
   <section class="screen on" id="screen-home">
+    <div class="stripbar"><button class="striphome" id="striphome" style="display:none" onclick="resetStrip()">Volver a hoy →</button></div>
     <div class="daystrip" id="daystrip"></div>
 
     <div class="gaugewrap">
@@ -320,6 +328,16 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
         <div class="streaknum" id="streak">0</div>
         <div class="streaklab">Días de racha</div>
         <div class="weekdots" id="weekdots"></div>
+      </div>
+    </div>
+
+    <div class="card" id="weeksummarycard">
+      <div class="cardhead"><h3>Resumen semanal</h3><span class="badge" id="ws-days">0/7 días</span></div>
+      <div class="macromini">
+        <span><b id="ws-avgcal">0</b>kcal/día</span>
+        <span><b id="ws-avgp">0</b>g prot/día</span>
+        <span><b id="ws-burn">0</b>kcal quemadas</span>
+        <span><b id="ws-ontarget">0</b>días en meta</span>
       </div>
     </div>
 
@@ -694,14 +712,14 @@ const EXS = [
 /* ================== ESTADO ================== */
 const LSKEY='kaltrack_v1';
 const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72}, profile:{weight:null,target:null},
-  customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false};
+  customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[]};
 let DB;
 try{ DB = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(LSKEY)||'{}')); }
 catch(e){ DB = JSON.parse(JSON.stringify(DEFAULTS)); }
 function migrate(){
   DB.goals = Object.assign({}, DEFAULTS.goals, DB.goals);
   DB.profile = Object.assign({}, DEFAULTS.profile, DB.profile);
-  DB.favs = DB.favs||[]; DB.recents = DB.recents||[];
+  DB.favs = DB.favs||[]; DB.recents = DB.recents||[]; DB.celebratedDays = DB.celebratedDays||[];
   DB.exAdd = DB.exAdd===true; // el ejercicio NO suma a restantes salvo que lo actives
   Object.values(DB.logs).forEach(l=>(l.foods||[]).forEach(f=>{ if(!f.meal) f.meal='comida'; }));
 }
@@ -736,6 +754,41 @@ function toast(msg){
   w.appendChild(t); setTimeout(()=>t.remove(),2500);
 }
 
+/* cuenta ascendente para números del gauge */
+function animateNum(el, to){
+  const from=parseFloat(el.dataset.val||'0')||0;
+  el.dataset.val=to;
+  if(from===to){ el.textContent=fmt(to); return; }
+  cancelAnimationFrame(el._raf);
+  const t0=performance.now(), dur=650;
+  const step=now=>{
+    const p=Math.min(1,(now-t0)/dur);
+    const eased=1-Math.pow(1-p,3);
+    el.textContent=fmt(from+(to-from)*eased);
+    if(p<1) el._raf=requestAnimationFrame(step);
+    else el.textContent=fmt(to);
+  };
+  el._raf=requestAnimationFrame(step);
+}
+
+function celebrate(){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:95';
+  const colors=['#fbcb3a','#fb923c','#34d399','#60a5fa','#ef4444','#fff'];
+  for(let i=0;i<28;i++){
+    const p=document.createElement('div');
+    p.className='confetti';
+    p.style.left=Math.random()*100+'%';
+    p.style.background=colors[i%colors.length];
+    p.style.animationDelay=(Math.random()*0.3)+'s';
+    p.style.animationDuration=(1.1+Math.random()*0.6)+'s';
+    wrap.appendChild(p);
+  }
+  $('#app').appendChild(wrap);
+  setTimeout(()=>wrap.remove(),2000);
+  toast('🎉 ¡Meta de hoy alcanzada!');
+}
+
 /* ================== NAVEGACIÓN ================== */
 let curScreen='home';
 document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>{
@@ -762,15 +815,16 @@ function toggleFab(){
 }
 
 /* ================== INICIO ================== */
+let stripAnchor=today();
 function renderDays(){
   const t=today(); let html='';
   for(let off=-3;off<=3;off++){
-    const d=new Date(t); d.setDate(t.getDate()+off);
+    const d=new Date(stripAnchor); d.setDate(stripAnchor.getDate()+off);
     const k=dkey(d);
     const cls=['day'];
     if(k===dkey(selDate))cls.push('sel');
     if(hasEntries(k))cls.push('logged');
-    if(off>0)cls.push('future');
+    if(d>t)cls.push('future');
     html+=`<button class="${cls.join(' ')}" data-k="${k}">
       <span class="dl">${DLET[d.getDay()]}</span><span class="dn">${d.getDate()}</span></button>`;
   }
@@ -778,6 +832,23 @@ function renderDays(){
   document.querySelectorAll('#daystrip .day').forEach(b=>b.addEventListener('click',()=>{
     selDate=fromKey(b.dataset.k); renderHome();
   }));
+  $('#striphome').style.display = dkey(stripAnchor)===dkey(t) ? 'none' : 'block';
+}
+function resetStrip(){ stripAnchor=today(); selDate=today(); renderHome(); }
+function attachStripSwipe(){
+  const el=$('#daystrip');
+  let sx=null, sy=null, active=false;
+  el.addEventListener('pointerdown',e=>{ sx=e.clientX; sy=e.clientY; active=true; });
+  el.addEventListener('pointerup',e=>{
+    if(!active) return; active=false;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.5){
+      const a=new Date(stripAnchor); a.setDate(a.getDate()+(dx<0?7:-7));
+      stripAnchor=a; renderDays();
+      el.classList.remove('swipeanim'); void el.offsetWidth; el.classList.add('swipeanim');
+    }
+  });
+  el.addEventListener('pointercancel',()=>{active=false;});
 }
 
 const MACRO_DEFS=[
@@ -792,14 +863,18 @@ function renderHome(){
   const isToday=k===dkey(today());
   $('#gdate').textContent = isToday ? `Hoy, ${selDate.getDate()} ${MESES[selDate.getMonth()]}`
     : `${DLET[selDate.getDay()]} ${selDate.getDate()} ${MESES[selDate.getMonth()]}`;
-  $('#gkcal').textContent=fmt(t.kcal);
+  animateNum($('#gkcal'), t.kcal);
   const left=g.cal - t.kcal + (DB.exAdd ? t.burn : 0);
   const pill=$('#gleftpill');
-  pill.textContent=fmt(Math.abs(left));
+  animateNum(pill, Math.abs(left));
   pill.classList.toggle('over',left<0);
   pill.parentNode.firstChild.textContent = left<0 ? 'Excedidas ' : 'Restantes ';
   $('#cburn').textContent=fmt(t.burn)+' kcal';
   $('#cgoal').textContent=fmt(g.cal)+' kcal';
+
+  if(isToday && g.cal>0 && t.kcal>=g.cal && !DB.celebratedDays.includes(k)){
+    DB.celebratedDays.push(k); save(); celebrate();
+  }
 
   // gauge: 270° de arco, C=703.7
   const C=703.7, ARC=C*0.75;
@@ -1265,6 +1340,7 @@ function renderProgress(){
     dots+=`<span class="wd ${done?'done':''}"><i>${done?'✓':''}</i>${DLET[i]}</span>`;
   }
   $('#weekdots').innerHTML=dots;
+  renderWeekSummary();
 
   // promedio 7 días + tendencia vs 7 anteriores
   const avgOf=(from,to)=>{ // días con registros
@@ -1288,6 +1364,27 @@ function renderProgress(){
   renderProjection();
   renderWeightChart();
   renderCalChart();
+}
+
+// resumen de la semana calendario actual (domingo a sábado), solo días ya transcurridos
+function renderWeekSummary(){
+  const t=today(), dow=t.getDay(), g=DB.goals;
+  const start=new Date(t); start.setDate(t.getDate()-dow);
+  let daysLogged=0, sumCal=0, sumP=0, burn=0, onTarget=0;
+  for(let i=0;i<7;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i);
+    if(d>t) continue;
+    const k=dkey(d);
+    if(!hasEntries(k)) continue;
+    const tt=dayTotals(k);
+    daysLogged++; sumCal+=tt.kcal; sumP+=tt.p; burn+=tt.burn;
+    if(g.cal>0 && Math.abs(tt.kcal-g.cal)<=g.cal*0.1) onTarget++;
+  }
+  $('#ws-days').textContent=daysLogged+'/7 días';
+  $('#ws-avgcal').textContent=daysLogged?fmt(sumCal/daysLogged):'0';
+  $('#ws-avgp').textContent=daysLogged?Math.round(sumP/daysLogged):'0';
+  $('#ws-burn').textContent=fmt(burn);
+  $('#ws-ontarget').textContent=onTarget;
 }
 
 /* Proyección: regresión lineal sobre los pesos de los últimos 60 días.
@@ -1598,6 +1695,7 @@ window.addEventListener('resize',()=>{ if(curScreen==='progress') renderProgress
 const appEl=document.getElementById('app');
 appEl.addEventListener('scroll',()=>{appEl.scrollTop=0;appEl.scrollLeft=0;});
 appEl.scrollTop=0;
+attachStripSwipe();
 renderAll();
 if(!DB.onboarded) openOnboard();
 // PWA: instalable y offline cuando se sirve por http(s); abierta como archivo sigue funcionando igual
