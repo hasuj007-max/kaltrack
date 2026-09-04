@@ -41,7 +41,7 @@ body{overflow:hidden}
 h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px}
 
 /* ===== Tira de días ===== */
-.daystrip{display:flex;justify-content:space-between;margin:4px 0 10px}
+.daystrip{display:flex;justify-content:space-between;margin:4px 0 10px;touch-action:pan-y}
 .day{display:flex;flex-direction:column;align-items:center;gap:7px;border:none;background:none;color:var(--dim);font:inherit;cursor:pointer}
 .day .dl{font-size:11px;font-weight:700;letter-spacing:1px}
 .day .dn{
@@ -757,16 +757,17 @@ function toast(msg){
 /* cuenta ascendente para números del gauge */
 function animateNum(el, to){
   const from=parseFloat(el.dataset.val||'0')||0;
-  el.dataset.val=to;
-  if(from===to){ el.textContent=fmt(to); return; }
+  if(from===to){ el.textContent=fmt(to); el.dataset.val=to; return; }
   cancelAnimationFrame(el._raf);
   const t0=performance.now(), dur=650;
   const step=now=>{
     const p=Math.min(1,(now-t0)/dur);
     const eased=1-Math.pow(1-p,3);
-    el.textContent=fmt(from+(to-from)*eased);
+    const cur=from+(to-from)*eased;
+    el.textContent=fmt(cur);
+    el.dataset.val=cur;
     if(p<1) el._raf=requestAnimationFrame(step);
-    else el.textContent=fmt(to);
+    else{ el.textContent=fmt(to); el.dataset.val=to; }
   };
   el._raf=requestAnimationFrame(step);
 }
@@ -838,7 +839,10 @@ function resetStrip(){ stripAnchor=today(); selDate=today(); renderHome(); }
 function attachStripSwipe(){
   const el=$('#daystrip');
   let sx=null, sy=null, active=false;
-  el.addEventListener('pointerdown',e=>{ sx=e.clientX; sy=e.clientY; active=true; });
+  el.addEventListener('pointerdown',e=>{
+    sx=e.clientX; sy=e.clientY; active=true;
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  });
   el.addEventListener('pointerup',e=>{
     if(!active) return; active=false;
     const dx=e.clientX-sx, dy=e.clientY-sy;
