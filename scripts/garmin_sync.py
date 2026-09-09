@@ -12,9 +12,15 @@ import os
 import sys
 import tarfile
 import tempfile
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from garminconnect import Garmin
+
+# El runner de GitHub Actions corre en UTC; "hoy" debe calcularse en la zona
+# horaria del usuario o, durante varias horas al dia, se le pediria a Garmin
+# el resumen de "manana" (todavia sin datos) en vez del de hoy.
+LOCAL_TZ = ZoneInfo("America/Mexico_City")
 
 
 def load_token_dir():
@@ -57,7 +63,7 @@ def main():
         sys.exit(f"No se pudo reanudar la sesion de Garmin (tokens vencidos o invalidos): {e}\n"
                   f"Corre scripts/garmin_login_setup.py de nuevo y actualiza el secret GARMIN_TOKENS.")
 
-    today = date.today().isoformat()
+    today = os.environ.get("GARMIN_TEST_DATE") or datetime.now(LOCAL_TZ).date().isoformat()
     summary = safe("get_user_summary", client.get_user_summary, today) or {}
     hr = safe("get_heart_rates", client.get_heart_rates, today) or {}
     sleep = safe("get_sleep_data", client.get_sleep_data, today) or {}
