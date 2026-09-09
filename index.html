@@ -301,6 +301,16 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
       <div class="chip">🎯 Meta <b id="cgoal">0</b></div>
     </div>
 
+    <div class="card" id="garmincard" style="display:none">
+      <div class="cardhead"><h3>⌚ Garmin</h3><span class="badge" id="gm-updated">—</span></div>
+      <div class="macromini">
+        <span><b id="gm-steps">—</b>pasos</span>
+        <span><b id="gm-sleep">—</b>h sueño</span>
+        <span><b id="gm-hr">—</b>bpm reposo</span>
+        <span><b id="gm-kcal">—</b>kcal activas</span>
+      </div>
+    </div>
+
     <div class="macros" id="macros"></div>
 
     <div class="card">
@@ -420,6 +430,12 @@ h1.title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:6px 2px 16px
     <div class="card">
       <div class="loglist" id="myex"></div>
       <button class="btn dark" style="margin-top:10px" onclick="openExSheet('create')">+ Crear ejercicio</button>
+    </div>
+
+    <div class="set-section">Garmin</div>
+    <div class="card">
+      <div class="projsub" id="gm-settxt" style="margin:0 0 10px">Sincroniza pasos, sueño, FC en reposo y calorías activas de tu reloj Garmin. Se actualiza sola varias veces al día.</div>
+      <button class="btn dark" onclick="syncGarmin(true)">🔄 Sincronizar ahora</button>
     </div>
 
     <div class="set-section">La app</div>
@@ -712,7 +728,7 @@ const EXS = [
 /* ================== ESTADO ================== */
 const LSKEY='kaltrack_v1';
 const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72}, profile:{weight:null,target:null},
-  customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[]};
+  customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[], garmin:null};
 let DB;
 try{ DB = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(LSKEY)||'{}')); }
 catch(e){ DB = JSON.parse(JSON.stringify(DEFAULTS)); }
@@ -720,6 +736,7 @@ function migrate(){
   DB.goals = Object.assign({}, DEFAULTS.goals, DB.goals);
   DB.profile = Object.assign({}, DEFAULTS.profile, DB.profile);
   DB.favs = DB.favs||[]; DB.recents = DB.recents||[]; DB.celebratedDays = DB.celebratedDays||[];
+  DB.garmin = DB.garmin||null;
   DB.exAdd = DB.exAdd===true; // el ejercicio NO suma a restantes salvo que lo actives
   Object.values(DB.logs).forEach(l=>(l.foods||[]).forEach(f=>{ if(!f.meal) f.meal='comida'; }));
 }
@@ -788,6 +805,40 @@ function celebrate(){
   $('#app').appendChild(wrap);
   setTimeout(()=>wrap.remove(),2000);
   toast('🎉 ¡Meta de hoy alcanzada!');
+}
+
+/* ================== GARMIN ================== */
+// garmin-today.json lo escribe un GitHub Action programado (ver .github/workflows/garmin-sync.yml).
+// La app solo lee ese archivo estático; no hay conexión directa a Garmin desde el navegador.
+function renderGarminCard(isToday){
+  const g=DB.garmin, card=$('#garmincard');
+  if(!isToday || !g || g.date!==dkey(today())){ card.style.display='none'; return; }
+  card.style.display='block';
+  $('#gm-steps').textContent = g.steps!=null ? fmt(g.steps) : '—';
+  $('#gm-sleep').textContent = g.sleepHours!=null ? g.sleepHours : '—';
+  $('#gm-hr').textContent = g.restingHR!=null ? g.restingHR : '—';
+  $('#gm-kcal').textContent = g.activeKcal!=null ? fmt(g.activeKcal) : '—';
+  const upd = g.updatedAt ? new Date(g.updatedAt) : null;
+  $('#gm-updated').textContent = upd ? `Act. ${pad(upd.getHours())}:${pad(upd.getMinutes())}` : '';
+}
+async function syncGarmin(showToast){
+  try{
+    const res = await fetch('./garmin-today.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('sin datos todavía');
+    const g = await res.json();
+    DB.garmin = g;
+    if(g.date===dkey(today()) && g.activeKcal!=null && g.activeKcal>0){
+      const k=dkey(today()), log=ensureLog(k);
+      const idx=log.ex.findIndex(e=>e.source==='garmin');
+      const item={n:'Garmin', e:'⌚', kcal:Math.round(g.activeKcal), source:'garmin'};
+      if(idx>=0) log.ex[idx]=item; else log.ex.push(item);
+    }
+    save();
+    if(curScreen==='home') renderHome();
+    if(showToast) toast('⌚ Garmin sincronizado');
+  }catch(e){
+    if(showToast) toast('No se pudo sincronizar Garmin todavía');
+  }
 }
 
 /* ================== NAVEGACIÓN ================== */
@@ -879,6 +930,7 @@ function renderHome(){
   if(isToday && g.cal>0 && t.kcal>=g.cal && !DB.celebratedDays.includes(k)){
     DB.celebratedDays.push(k); save(); celebrate();
   }
+  renderGarminCard(isToday);
 
   // gauge: 270° de arco, C=703.7
   const C=703.7, ARC=C*0.75;
@@ -928,12 +980,15 @@ function renderHome(){
     });
     if(l.ex.length){
       html+=`<div class="mealhead">🏃 Ejercicio<b>−${fmt(t.burn)} kcal</b></div>`
-          + l.ex.map((e,i)=>`<div class="lrow tap" onclick="editExEntry('${k}',${i})">
+          + l.ex.map((e,i)=>{
+              const isG=e.source==='garmin';
+              return `<div class="lrow ${isG?'':'tap'}" ${isG?'':`onclick="editExEntry('${k}',${i})"`}>
         <div class="lemoji">${e.e}</div>
-        <div class="linfo"><div class="lname">${e.n}</div><div class="lsub">${e.min} min</div></div>
+        <div class="linfo"><div class="lname">${e.n}</div><div class="lsub">${isG?'Sincronizado ⌚':e.min+' min'}</div></div>
         <div class="lkcal burn">−${fmt(e.kcal)}</div>
         <button class="ldel" onclick="event.stopPropagation();delEntry('${k}','ex',${i})">✕</button>
-      </div>`).join('');
+      </div>`;
+            }).join('');
     }
     $('#loglist').innerHTML=html;
   }
@@ -1702,6 +1757,7 @@ appEl.scrollTop=0;
 attachStripSwipe();
 renderAll();
 if(!DB.onboarded) openOnboard();
+syncGarmin(false);
 // PWA: instalable y offline cuando se sirve por http(s); abierta como archivo sigue funcionando igual
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
