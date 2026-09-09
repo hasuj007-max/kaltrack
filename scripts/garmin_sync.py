@@ -63,6 +63,15 @@ def main():
     sleep = safe("get_sleep_data", client.get_sleep_data, today) or {}
     steps_data = safe("get_steps_data", client.get_steps_data, today)
 
+    if os.environ.get("GARMIN_DEBUG"):
+        print("DEBUG summary keys:", sorted(summary.keys()) if isinstance(summary, dict) else type(summary), file=sys.stderr)
+        print("DEBUG summary:", json.dumps(summary)[:3000], file=sys.stderr)
+        print("DEBUG hr keys:", sorted(hr.keys()) if isinstance(hr, dict) else type(hr), file=sys.stderr)
+        print("DEBUG hr:", json.dumps(hr)[:1500], file=sys.stderr)
+        print("DEBUG sleep keys:", sorted(sleep.keys()) if isinstance(sleep, dict) else type(sleep), file=sys.stderr)
+        print("DEBUG sleep:", json.dumps(sleep)[:3000], file=sys.stderr)
+        print("DEBUG steps_data:", json.dumps(steps_data)[:1500] if steps_data is not None else None, file=sys.stderr)
+
     sleep_seconds = dig(sleep, "dailySleepDTO", "sleepTimeSeconds")
     sleep_score = dig(sleep, "dailySleepDTO", "sleepScores", "overall", "value")
 
