@@ -25,6 +25,7 @@ jobs:
         env:
           GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_DEBUG: '1'
         run: python scripts/garmin_sync.py
 
       - name: Publicar garmin-today.json
