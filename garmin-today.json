@@ -1,11 +1,11 @@
 {
-  "date": "2026-09-27",
-  "updatedAt": "2026-09-27T22:50:57.382536+00:00",
-  "activeKcal": 272.0,
-  "totalKcal": 1637.0,
-  "steps": 5996,
-  "stepGoal": 10260,
-  "restingHR": 60,
+  "date": "2026-09-28",
+  "updatedAt": "2026-09-28T09:26:12.212288+00:00",
+  "activeKcal": 0.0,
+  "totalKcal": 265.0,
+  "steps": null,
+  "stepGoal": 9410,
+  "restingHR": null,
   "sleepHours": null,
   "sleepScore": null
 }
