@@ -200,6 +200,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .setshead,.setrow{display:grid;grid-template-columns:34px 1fr 1fr 28px;gap:8px;align-items:center}
 .setshead{font-size:10.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:2px 0 6px;text-align:center}
 .setrow{margin-bottom:8px}
+.sethint{font-size:12px;color:var(--mut);font-weight:500;margin:0 2px 12px;line-height:1.4}
 .setrow .sn{width:30px;height:30px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--mut)}
 .setrow input{width:100%;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 8px;color:var(--txt);font:inherit;font-size:16px;font-weight:600;outline:none;text-align:center}
 .setrow input:focus{border-color:#c8f56066}
@@ -572,16 +573,20 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     <details class="howto" style="margin-top:12px">
       <summary>¿Cómo funciona Fuerza?</summary>
       <ul>
-        <li><b>Registra cada sesión:</b> el ejercicio y cada serie con su peso (kg) y repeticiones. Ej: 60×8, 60×8, 62.5×6.</li>
-        <li><b>1RM estimado:</b> el peso máximo que podrías levantar 1 sola vez, calculado de tu mejor serie (fórmula de Epley: peso × (1 + reps/30)). Sirve para comparar días aunque cambies peso y reps: 60×10 y 70×5 dan casi lo mismo.</li>
-        <li><b>🏆 Récord (PR):</b> cuando tu 1RM del día supera tu mejor marca anterior en ese ejercicio.</li>
-        <li><b>Volumen:</b> kg × reps de todas tus series sumadas; es el trabajo total que hiciste.</li>
-        <li><b>Sobrecarga progresiva:</b> al registrar te precargo lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
+        <li><b>Repetición:</b> subir y bajar el peso una vez.</li>
+        <li><b>Serie:</b> varias repeticiones seguidas, sin descansar. <b>"20×10"</b> = una serie de 10 repeticiones con 20 kg (primero el peso, luego las repeticiones).</li>
+        <li><b>Registro:</b> un ejercicio en un día, con todas sus series. Si hoy haces 5 ejercicios, registras 5 veces (uno por ejercicio).</li>
+        <li><b>Ejemplo:</b> hoy hiciste press de banca con mancuernas de 20 kg, 3 series de 10 → registras <b>20×10, 20×10, 20×10</b>.</li>
+        <li><b>Qué peso escribir:</b> mancuernas → el peso de UNA sola · barra → el total, barra + discos (la olímpica pesa 20 kg) · máquina o polea → lo que marca la máquina.</li>
+        <li><b>1RM estimado:</b> el peso máximo que podrías levantar 1 sola vez, calculado de tu mejor serie. Sirve para comparar días aunque cambies peso y repeticiones: 60×10 y 70×5 dan casi lo mismo.</li>
+        <li><b>🏆 Récord:</b> cuando tu 1RM de hoy supera tu mejor marca anterior en ese ejercicio.</li>
+        <li><b>Volumen:</b> peso × repeticiones de todas tus series sumadas; es el trabajo total que hiciste.</li>
+        <li><b>Para progresar:</b> al registrar te precargo lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
         <li><b>Peso corporal</b> (dominadas, fondos, lagartijas): escribe solo el peso extra (0 si no cargas nada); tu peso se suma solo.</li>
       </ul>
     </details>
     <div class="row3">
-      <div class="ins"><div class="il">Sesiones</div><div class="iv" id="lk-ses">0</div><div class="is">últimos 7 días</div></div>
+      <div class="ins"><div class="il">Días entrenados</div><div class="iv" id="lk-ses">0</div><div class="is">últimos 7 días</div></div>
       <div class="ins"><div class="il">Volumen</div><div class="iv" id="lk-vol">0</div><div class="is">últimos 7 días</div></div>
       <div class="ins"><div class="il">Récords 🏆</div><div class="iv" id="lk-pr">0</div><div class="is">últimos 30 días</div></div>
     </div>
@@ -600,7 +605,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       </div>
       <div class="chart" id="lchart"></div>
       <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
-      <div class="catlab">Historial · toca una sesión para editarla</div>
+      <div class="catlab">Historial · toca un registro para editarlo</div>
       <div id="lhist"></div>
     </div>
     <h2 class="sect" id="exgridtitle">Tus ejercicios</h2>
@@ -863,6 +868,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <div class="field" id="lf-newwrap" style="display:none"><label>Nombre de tu ejercicio</label><input id="lf-new" placeholder="Ej. Press Arnold" autocomplete="off"></div>
       <div class="field"><label>Fecha</label><input type="date" id="lf-date"></div>
       <div class="lfprev" id="lf-prev" style="display:none"></div>
+      <div class="sethint">Cada fila es una serie: el peso y cuántas repeticiones hiciste.</div>
       <div class="setshead"><span>Serie</span><span id="lf-kghead">Kg</span><span>Reps</span><span></span></div>
       <div id="lf-sets"></div>
       <button class="btn dark" onclick="addSet()">+ Agregar serie</button>
@@ -2259,7 +2265,7 @@ function openLiftSheet(ex, editId){
   renderSets();
   if(cur==='__new') setTimeout(()=>$('#lf-new').focus(),350);
 }
-// se precargan las series de la última sesión de ese ejercicio para que solo ajustes
+// se precargan las series del último registro de ese ejercicio para que solo ajustes
 function prefillSets(ex){
   const ls=liftsOf(ex), last=ls[ls.length-1];
   liftSets = last ? last.sets.map(s=>({...s})) : [{kg:'',reps:''}];
@@ -2274,8 +2280,11 @@ function renderLiftPrev(){
   const x=LIB_BY[currentLiftEx()], el=$('#lf-prev');
   if(!x){ el.style.display='none'; return; }
   el.style.display='flex';
+  const tip={'Mancuernas':'Escribe el peso de UNA mancuerna.','Barra':'Escribe el total: barra + discos (la olímpica pesa 20 kg).',
+    'Máquina':'Escribe el peso que marca la máquina.','Polea':'Escribe el peso que marca la polea.',
+    'Peso corporal':'Pon solo el peso extra (0 si es sin peso); se suma tu peso corporal.'}[x.eq]||'';
   el.innerHTML=`<img src="${exImg(x,0)}" alt=""><img src="${exImg(x,1)}" alt="">
-    <div><b>${esc(x.g)} · ${esc(x.eq)}</b>${x.bw?'<small>Pon solo el peso extra (0 si es sin peso); se suma tu peso corporal.</small>':''}</div>`;
+    <div><b>${esc(x.g)} · ${esc(x.eq)}</b><small>${tip}</small></div>`;
 }
 function renderSets(){
   const bw=isBW(currentLiftEx());
@@ -2362,7 +2371,7 @@ function renderStrength(){
   $('#exgridtitle').style.display = used.length ? 'block' : 'none';
   renderLibrary();
   if(!used.length){ $('#exgrid').innerHTML=''; return; }
-  // por default: el ejercicio más reciente que ya tenga al menos 2 sesiones (para que haya línea)
+  // por default: el ejercicio más reciente que ya tenga al menos 2 registros (para que haya línea)
   if(!used.includes(liftSel)) liftSel = used.find(n=>liftsOf(n).length>1) || used[0];
   $('#liftname').textContent=liftSel;
   $('#liftchips').innerHTML=used.map(n=>`<button class="chip2 ${n===liftSel?'on':''}" data-ex="${esc(n)}">${esc(n)}</button>`).join('');
@@ -2372,8 +2381,8 @@ function renderStrength(){
   $('#l1rm').textContent=r1(Math.max(...bests));
   const diff = S.length>1 ? r1(bests[bests.length-1]-bests[0]) : null;
   setDelta($('#ldelta'), diff, diff==null?'':Math.abs(diff)+' kg', false);
-  $('#ldeltalab').textContent = S.length>1 ? `última vs ${shortDate(S[0].d)}` : 'primera sesión';
-  if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra otra sesión de este ejercicio para ver tu línea de progreso 📈</div>';
+  $('#ldeltalab').textContent = S.length>1 ? `última vs ${shortDate(S[0].d)}` : 'primer registro';
+  if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra este ejercicio otro día para ver tu línea de progreso 📈</div>';
   else drawChart($('#lchart'),[{data:bests.map(r1),color:'#c8f560',fill:true}], S.map(l=>shortDate(l.d)),
     {h:160, straight:true, dots:true, dec:true,
      tip:i=>`<b>${r1(bests[i])} kg</b> 1RM est.<br><small>${shortDate(S[i].d)} · ${S[i].sets.map(s=>fmtSet(S[i].ex,s)).join(', ')}</small>`});
@@ -2390,7 +2399,7 @@ function renderStrength(){
     return `<button class="excard ${n===liftSel?'on':''}" data-ex="${esc(n)}">
       <div class="en">${esc(n)}</div>
       <div class="ev">${r1(Math.max(...b))} <small>kg 1RM</small></div>
-      <div class="es">${cnt} sesi${cnt>1?'ones':'ón'} · ${shortDate(lastD)}</div>${tr}</button>`;
+      <div class="es">${cnt} registro${cnt>1?'s':''} · ${shortDate(lastD)}</div>${tr}</button>`;
   }).join('');
   document.querySelectorAll('#exgrid .excard').forEach(b=>b.addEventListener('click',()=>{
     liftSel=b.dataset.ex; renderStrength(); $('#screen-strength').scrollTo({top:0,behavior:'smooth'});
