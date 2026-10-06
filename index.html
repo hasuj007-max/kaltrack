@@ -229,6 +229,10 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .lfprev img{width:62px;height:42px;object-fit:cover;border-radius:8px;flex-shrink:0}
 .lfprev b{display:block;font-size:12.5px;font-weight:600}
 .lfprev small{display:block;font-size:11px;color:var(--mut);margin-top:3px;line-height:1.35}
+.lfmax{font-size:13px;font-weight:500;color:#c9c9cf;background:#c8f5600d;border:1px solid #c8f56033;border-radius:12px;padding:9px 12px;margin:0 0 12px}
+.lfmax b{color:var(--lime);font-weight:700} .lfmax small{color:var(--mut);font-size:12px}
+.kmax{font-size:12.5px;color:var(--mut);font-weight:500;margin-top:4px} .kmax b{color:var(--txt);font-weight:700}
+.excard .em{font-size:12px;color:var(--txt);font-weight:600;margin-top:4px}
 .xitags{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
 .xiimgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .xiimgs figure{margin:0}
@@ -620,6 +624,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div style="min-width:0">
           <div class="klab">Progreso · <b id="liftname" style="color:var(--lime);font-weight:600"></b></div>
           <div class="kval"><span id="l1rm">—</span> <small>kg · mejor 1RM est.</small></div>
+          <div class="kmax" id="lmax"></div>
         </div>
         <div class="kdelta"><span class="dbadge" id="ldelta">—</span><small id="ldeltalab"></small></div>
       </div>
@@ -888,6 +893,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <div class="field" id="lf-newwrap" style="display:none"><label>Nombre de tu ejercicio</label><input id="lf-new" placeholder="Ej. Press Arnold" autocomplete="off"></div>
       <div class="field"><label>Fecha</label><input type="date" id="lf-date"></div>
       <div class="lfprev" id="lf-prev" style="display:none"></div>
+      <div class="lfmax" id="lf-max" style="display:none"></div>
       <div class="sethint">Cada fila es una serie: el peso y cuántas repeticiones hiciste.</div>
       <div class="setshead"><span>Serie</span><span id="lf-kghead">Kg</span><span>Reps</span><span></span></div>
       <div id="lf-sets"></div>
@@ -2417,6 +2423,14 @@ const e1rm=(kg,reps)=> !(kg>0)||!(reps>0) ? 0 : reps===1 ? kg : kg*(1+reps/30);
 const sessBest=l=>Math.max(0,...l.sets.map(s=>e1rm(setLoad(l.ex,s),s.reps)));
 const sessVol=l=>l.sets.reduce((a,s)=>a+setLoad(l.ex,s)*(s.reps||0),0);
 const liftsOf=ex=>DB.lifts.filter(l=>l.ex===ex).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.id<b.id?-1:1));
+// máximo levantado de verdad (no estimado): el peso más alto y, con ese peso, más reps; en peso corporal, kg extra y reps
+const setCmp=(a,b)=>(+a.kg||0)-(+b.kg||0) || (a.reps||0)-(b.reps||0);
+function maxSet(ex, skipId){
+  let best=null;
+  liftsOf(ex).forEach(l=>{ if(l.id!==skipId) l.sets.forEach(s=>{ if(!best || setCmp(s,best.s)>0) best={s, d:l.d}; }); });
+  return best;
+}
+const fmtMax=(ex,s)=> isBW(ex) ? (+s.kg ? `+${r1(s.kg)} kg × ${s.reps}` : `${s.reps} reps`) : `${r1(s.kg)} kg × ${s.reps}`;
 function isPR(l){
   const prev=liftsOf(l.ex).filter(x=>x.d<l.d||(x.d===l.d&&x.id<l.id));
   return prev.length>0 && sessBest(l)>Math.max(...prev.map(sessBest))+1e-9;
@@ -2482,7 +2496,7 @@ function renderSets(){
   document.querySelectorAll('#lf-sets input').forEach(inp=>inp.addEventListener('input',()=>{
     const v=parseFloat(inp.value); liftSets[+inp.dataset.i][inp.dataset.f]=isNaN(v)?'':v; updLiftLive();
   }));
-  renderLiftPrev(); updLiftLive();
+  renderLiftPrev(); renderLiftMax(); updLiftLive();
 }
 function addSet(){ const l=liftSets[liftSets.length-1]||{kg:'',reps:''}; liftSets.push({...l}); renderSets(); }
 function delSet(i){ liftSets.splice(i,1); renderSets(); }
@@ -2493,11 +2507,20 @@ function updLiftLive(){
   const best=Math.max(...valid.map(s=>e1rm(setLoad(ex,s),s.reps))), vol=valid.reduce((a,s)=>a+setLoad(ex,s)*s.reps,0);
   const prev=liftsOf(ex).filter(l=>l.id!==editingLift);
   const prevBest=prev.length ? Math.max(...prev.map(sessBest)) : null;
+  const mx=maxSet(ex, editingLift), top=valid.reduce((a,s)=>setCmp(s,a)>0?s:a);
   $('#lf-live').innerHTML=`1RM estimado: <b>${r1(best)} kg</b> · Volumen: <b>${fmt(vol)} kg</b>`
     + (isBW(ex) ? `<br><small>Con tu peso corporal de ${r1(DB.profile.weight||70)} kg</small>` : '')
+    + (mx && setCmp(top,mx.s)>0 ? `<br><span class="pr">💪 ¡Nuevo máximo: ${fmtMax(ex,top)}! Antes: ${fmtMax(ex,mx.s)}</span>` : '')
     + (prevBest==null ? '' : best>prevBest+1e-9
         ? `<br><span class="pr">🏆 ¡Nuevo récord! Antes: ${r1(prevBest)} kg</span>`
         : `<br>Tu récord: ${r1(prevBest)} kg`);
+}
+// referencia arriba de las series: lo más pesado que has levantado en este ejercicio
+function renderLiftMax(){
+  const ex=currentLiftEx(), mx=ex && maxSet(ex, editingLift), el=$('#lf-max');
+  if(!mx){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML=`📌 Tu máximo: <b>${fmtMax(ex,mx.s)}</b> <small>· ${shortDate(mx.d)}</small>`;
 }
 function saveLift(){
   const ex=currentLiftEx(), d=$('#lf-date').value, wasEdit=!!editingLift;
@@ -2531,9 +2554,10 @@ function renderLibrary(){
 function openExInfo(n){
   const x=LIB_BY[n]; if(!x) return;
   closeSheets(); openSheet('sheet-exinfo');
-  const S=liftsOf(n), best=S.length ? Math.max(...S.map(sessBest)) : null;
+  const S=liftsOf(n), best=S.length ? Math.max(...S.map(sessBest)) : null, mx=maxSet(n);
   $('#xi-name').textContent=x.n;
-  $('#xi-tags').innerHTML=`<span class="badge">${esc(x.g)}</span><span class="badge">${esc(x.eq)}</span>`+(best?`<span class="badge green">Tu mejor 1RM: ${r1(best)} kg</span>`:'');
+  $('#xi-tags').innerHTML=`<span class="badge">${esc(x.g)}</span><span class="badge">${esc(x.eq)}</span>`
+    +(mx?`<span class="badge green">Tu máximo: ${fmtMax(n,mx.s)}</span>`:'')+(best?`<span class="badge green">Tu mejor 1RM: ${r1(best)} kg</span>`:'');
   $('#xi-imgs').innerHTML=`<figure><img src="${exImg(x,0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${exImg(x,1)}" alt=""><figcaption>Final</figcaption></figure>`;
   $('#xi-go').onclick=()=>openLiftSheet(n);
 }
@@ -2565,6 +2589,8 @@ function renderStrength(){
 
   const S=liftsOf(liftSel), bests=S.map(sessBest);
   $('#l1rm').textContent=r1(Math.max(...bests));
+  const mx=maxSet(liftSel);
+  $('#lmax').innerHTML = mx ? `Máximo levantado: <span style="white-space:nowrap"><b>${fmtMax(liftSel,mx.s)}</b> · ${shortDate(mx.d)}</span>` : '';
   const diff = S.length>1 ? r1(bests[bests.length-1]-bests[0]) : null;
   setDelta($('#ldelta'), diff, diff==null?'':Math.abs(diff)+' kg', false);
   $('#ldeltalab').textContent = S.length>1 ? `última vs ${shortDate(S[0].d)}` : 'primer registro';
@@ -2579,12 +2605,13 @@ function renderStrength(){
       <button class="ldel" onclick="event.stopPropagation();delLift('${l.id}')">✕</button></div>`).join('');
 
   $('#exgrid').innerHTML=used.map(n=>{
-    const b=liftsOf(n).map(sessBest), last=b[b.length-1], prv=b[b.length-2], cnt=b.length, ls=liftsOf(n), lastD=ls[ls.length-1].d;
+    const b=liftsOf(n).map(sessBest), last=b[b.length-1], prv=b[b.length-2], cnt=b.length, ls=liftsOf(n), lastD=ls[ls.length-1].d, mx=maxSet(n);
     const tr = prv==null ? '' : last>prv+1e-9 ? '<span class="is ok">↑ subiendo</span>'
       : last<prv-1e-9 ? '<span class="is bad">↓ bajó vs anterior</span>' : '<span class="is">• igual que antes</span>';
     return `<button class="excard ${n===liftSel?'on':''}" data-ex="${esc(n)}">
       <div class="en">${esc(n)}</div>
       <div class="ev">${r1(Math.max(...b))} <small>kg 1RM</small></div>
+      ${mx?`<div class="em">Máx: ${fmtMax(n,mx.s)}</div>`:''}
       <div class="es">${cnt} registro${cnt>1?'s':''} · ${shortDate(lastD)}</div>${tr}</button>`;
   }).join('');
   document.querySelectorAll('#exgrid .excard').forEach(b=>b.addEventListener('click',()=>{
