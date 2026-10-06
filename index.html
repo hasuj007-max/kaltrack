@@ -3155,25 +3155,34 @@ async function bajar(){
     toast('☁️ Datos de tu cuenta cargados');
   }
 }
+async function subirPartes(op){
+  try{
+    if(looksEmpty() && Object.keys(syncMeta().h).length && !op.permitirVacio){
+      lastErr='Este teléfono está vacío: no se sube nada para no borrar tu respaldo.'; return;
+    }
+    for(const x of pendingParts()){
+      const u=Date.now();
+      await setDoc(x.p==='main' ? refMain(user.uid) : refMes(user.uid,x.p), {u, datos:x.datos});
+      markSynced(x.p, x.h, u);
+    }
+    lastOk=Date.now(); lastErr=null;
+  }catch(e){
+    lastErr = navigator.onLine===false ? 'Sin internet: se sube cuando vuelva la conexión.' : 'No se pudo subir ('+(e.code||e.message)+').';
+  }
+}
+/* Una subida a la vez; al terminar la anterior se sube lo que cambió mientras.
+   ☠️ `pushing` lo libera SOLO quien lo creó, después de esperarlo. Antes se liberaba dentro de la propia
+   subida: si no había nada que subir terminaba al instante, ANTES de guardarse en `pushing`, y la marca
+   quedaba puesta para siempre → la siguiente subida esperaba en un bucle sin fin, la app se congelaba y el
+   iPhone la mataba (pantalla negra al ir agregando cosas). */
 async function subir(op={}){
   if(!user || !pulled) return;
-  while(pushing) await pushing;   // una subida a la vez; al terminar la anterior se sube lo que cambió mientras
-  pushing=(async()=>{
-    try{
-      if(looksEmpty() && Object.keys(syncMeta().h).length && !op.permitirVacio){
-        lastErr='Este teléfono está vacío: no se sube nada para no borrar tu respaldo.'; return;
-      }
-      for(const x of pendingParts()){
-        const u=Date.now();
-        await setDoc(x.p==='main' ? refMain(user.uid) : refMes(user.uid,x.p), {u, datos:x.datos});
-        markSynced(x.p, x.h, u);
-      }
-      lastOk=Date.now(); lastErr=null;
-    }catch(e){
-      lastErr = navigator.onLine===false ? 'Sin internet: se sube cuando vuelva la conexión.' : 'No se pudo subir ('+(e.code||e.message)+').';
-    }finally{ pushing=null; pintar(); }
-  })();
-  return pushing;
+  while(pushing) await pushing;
+  const run=subirPartes(op);
+  pushing=run;
+  await run;
+  if(pushing===run) pushing=null;
+  pintar();
 }
 
 const proveedor=new GoogleAuthProvider();
