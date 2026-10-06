@@ -1335,7 +1335,7 @@ function renderHome(){
     </div>`;
   }).join('');
 
-  renderBalance(t);
+  renderBalance(t,k);
   const md=measureDue();
   $('#hduebanner').style.display = md.due ? 'flex' : 'none';
   $('#hduetxt').textContent = DB.measures.length ? '📏 Te toca registrar tus medidas de la semana' : '📏 Registra tus medidas para seguir tu progreso';
@@ -1824,7 +1824,7 @@ const wantsDown=()=> (DB.profile.goalType||'bajar')!=='subir';
 function setDelta(el, diff, txt, downIsGood){
   if(diff==null || !isFinite(diff)){ el.textContent='—'; el.className='dbadge'; return; }
   el.textContent=(diff>0?'↑ ':diff<0?'↓ ':'• ')+txt;
-  el.className='dbadge'+(diff===0?'':((diff<0)===downIsGood?' good':' bad'));
+  el.className='dbadge'+(diff===0 || downIsGood==null ? '' : ((diff<0)===downIsGood?' good':' bad'));
 }
 function ringSVG(sel,p,c1,c2){
   const r=26, C=2*Math.PI*r, id=sel.slice(1)+'-g';
@@ -2030,7 +2030,9 @@ function renderWeight(){
     host.innerHTML=`<div class="empty">${DB.weights.length ? 'Sin pesajes en este periodo. Prueba con "Todo".' : 'Registra tu peso para ver tu tendencia ⚖️'}</div>`;
     return;
   }
-  const first=ws[0], last=ws[ws.length-1], downIsGood=(wt!=null && w!=null) ? wt<w : wantsDown();
+  // bajar es bueno si la meta está por debajo de donde EMPEZASTE (comparar contra el peso actual fallaba al llegar a la meta)
+  const startKg=DB.weights[0].kg;
+  const first=ws[0], last=ws[ws.length-1], downIsGood = wt!=null && wt!==startKg ? wt<startKg : wantsDown();
   $('#wavg').textContent=last.tr.toFixed(1);
   const diff = ws.length>1 ? r1(last.tr-first.tr) : null;
   setDelta($('#wdelta'), diff, diff==null?'':`${Math.abs(diff)} kg`, downIsGood);
@@ -2105,8 +2107,13 @@ function renderProjection(){
 /* ================== BALANCE DEL DÍA ================== */
 // Gasto estimado del día completo: basal (Mifflin-St Jeor, incluye las horas de sueño) + pasos + digestión + ejercicio.
 // No toca la meta de calorías: la meta ya incluye tu actividad, sumarlo a "restantes" lo contaría doble.
-function dayBurnEstimate(t){
-  const pr=DB.profile, w=pr.weight, h=pr.height, a=pr.age, sex=pr.sex||'m';
+// peso de ese día: el último pesaje en o antes de la fecha (para días pasados no sirve el peso de hoy)
+function weightOn(k){
+  let w=null; for(const x of DB.weights){ if(x.d<=k) w=x.kg; else break; }
+  return w ?? (DB.weights[0]?.kg ?? DB.profile.weight);
+}
+function dayBurnEstimate(t,k){
+  const pr=DB.profile, w=k ? weightOn(k) : pr.weight, h=pr.height, a=pr.age, sex=pr.sex||'m';
   if(!(w>0 && h>0 && a>0)) return null;
   const bmr = 10*w + 6.25*h - 5*a + (sex==='f' ? -161 : 5);
   const sleepH = pr.sleepH ?? 7.5, steps = pr.steps ?? 10000;
@@ -2114,12 +2121,12 @@ function dayBurnEstimate(t){
   const km = steps * h*(sex==='f'?0.413:0.415)/100 / 1000;   // largo de zancada ≈ 41.5% de la altura
   const walk = 0.5*w*km;                                     // caminar ≈ 0.5 kcal por kg por km (sobre el reposo)
   const tef = 0.10*t.kcal;                                   // digerir cuesta ~10% de lo que comes
-  return {bmr, sleep, rest, walk, tef, ex:t.burn, total:bmr+walk+tef+t.burn, sleepH, steps, km};
+  return {bmr, sleep, rest, walk, tef, ex:t.burn, total:bmr+walk+tef+t.burn, sleepH, steps, km, w};
 }
 let balOpen=false;
 function toggleBal(){ balOpen=!balOpen; renderHome(); }
-function renderBalance(t){
-  const e=dayBurnEstimate(t), badge=$('#balbadge');
+function renderBalance(t,k){
+  const e=dayBurnEstimate(t,k), badge=$('#balbadge');
   $('#baltoggle').style.display = e ? 'block' : 'none';
   if(!e){
     badge.textContent='Falta tu perfil'; badge.className='badge warn';
@@ -2143,14 +2150,15 @@ function renderBalance(t){
     + row('🚶',`${fmt(e.steps)} pasos (~${r1(e.km)} km)`,e.walk)
     + row('🍽️','Digestión (10% de lo que comes)',e.tef)
     + (e.ex ? row('🔥','Ejercicio registrado',e.ex) : '')
-    + `<div class="bnote">Estimado con la fórmula Mifflin-St Jeor (${DB.profile.age} años, ${r1(DB.profile.weight)} kg, ${DB.profile.height} cm). Se recalcula solo cada día; cámbialo en Ajustes → Mi perfil.</div>`;
+    + `<div class="bnote">Estimado con la fórmula Mifflin-St Jeor (${DB.profile.age} años, ${r1(e.w)} kg ese día, ${DB.profile.height} cm). Se recalcula solo cada día; cámbialo en Ajustes → Mi perfil.</div>`;
 }
 
 /* ================== MEDIDAS ================== */
+// upGood null = neutral: pierna y pecho mezclan grasa y músculo; al bajar de peso es normal que bajen
 const MKEYS=[
-  {k:'leg',  n:'Pierna',  e:'🦵', upGood:true},
+  {k:'leg',  n:'Pierna',  e:'🦵', upGood:null},
   {k:'bic',  n:'Bíceps',  e:'💪', upGood:true},
-  {k:'chest',n:'Pecho',   e:'🫁', upGood:true},
+  {k:'chest',n:'Pecho',   e:'🫁', upGood:null},
   {k:'waist',n:'Cintura', e:'📏', upGood:false}];
 let mSel='waist';
 const daysBetween=(a,b)=>Math.round((fromKey(b)-fromKey(a))/86400000);
@@ -2195,7 +2203,7 @@ function renderBody(){
     const pts=M.filter(x=>x[m.k]!=null), cur=pts[pts.length-1], prev=pts[pts.length-2], first=pts[0];
     const d = cur&&prev ? r1(cur[m.k]-prev[m.k]) : null;
     const tot = pts.length>1 ? r1(cur[m.k]-first[m.k]) : null;
-    const cls = !d ? '' : ((d>0)===m.upGood ? 'ok' : 'bad');
+    const cls = !d || m.upGood==null ? '' : ((d>0)===m.upGood ? 'ok' : 'bad');
     return `<button class="mcard ${mSel===m.k?'on':''}" data-k="${m.k}">
       <div class="il" style="font-size:12px;color:#c9c9cf;font-weight:500">${m.e} ${m.n}</div>
       <div class="iv" style="font-size:22px;font-weight:700;letter-spacing:-.5px;margin-top:6px">${cur?cur[m.k]:'—'} <small style="font-size:11px;color:var(--mut);font-weight:500">cm</small></div>
@@ -2209,7 +2217,7 @@ function renderBody(){
   $('#mevtitle').textContent=`Evolución · ${m.e} ${m.n}`;
   $('#mcur').textContent = pts.length ? pts[pts.length-1][mSel] : '—';
   const diff = pts.length>1 ? r1(pts[pts.length-1][mSel]-pts[0][mSel]) : null;
-  setDelta($('#mdelta'), diff, diff==null?'':Math.abs(diff)+' cm', !m.upGood);
+  setDelta($('#mdelta'), diff, diff==null?'':Math.abs(diff)+' cm', m.upGood==null ? null : !m.upGood);
   $('#mdeltalab').textContent = pts.length>1 ? `desde el ${shortDate(pts[0].d)}` : '';
   if(pts.length<2) $('#mchart').innerHTML=`<div class="empty">${pts.length?'Con tu siguiente medición verás la línea 📈':'Registra tus medidas para ver tu evolución 📏'}</div>`;
   else drawChart($('#mchart'),[{data:pts.map(x=>x[mSel]),color:'#c8f560',fill:true}], pts.map(x=>shortDate(x.d)),
@@ -2437,6 +2445,8 @@ function renderStrength(){
   $('#liftname').textContent=liftSel;
   $('#liftchips').innerHTML=used.map(n=>`<button class="chip2 ${n===liftSel?'on':''}" data-ex="${esc(n)}">${esc(n)}</button>`).join('');
   document.querySelectorAll('#liftchips .chip2').forEach(b=>b.addEventListener('click',()=>{ liftSel=b.dataset.ex; renderStrength(); }));
+  const onChip=$('#liftchips .chip2.on'), chipRow=$('#liftchips');   // que el ejercicio elegido quede a la vista
+  if(onChip) chipRow.scrollLeft = onChip.offsetLeft - chipRow.clientWidth/2 + onChip.offsetWidth/2;
 
   const S=liftsOf(liftSel), bests=S.map(sessBest);
   $('#l1rm').textContent=r1(Math.max(...bests));
