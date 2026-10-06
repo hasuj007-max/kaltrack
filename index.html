@@ -68,19 +68,21 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .daystrip.swipeanim{animation:fadeIn .22s ease}
 
 /* ===== Gauge ===== */
-.gaugewrap{position:relative;display:flex;justify-content:center;margin:2px 0 0}
-.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:14px}
-.gauge-center .gdate{font-size:13.5px;color:var(--mut);font-weight:500;margin-bottom:2px}
-.gauge-center .gnum{font-size:52px;font-weight:700;letter-spacing:-2px;line-height:1.05;font-variant-numeric:tabular-nums}
-.gauge-center .gnum small{font-size:18px;font-weight:500;color:var(--mut);letter-spacing:0;margin-left:5px}
-.gauge-center .gleft{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13.5px;color:var(--mut);font-weight:500}
-.gauge-center .gleft .pill{background:#c8f5601a;border:1px solid #c8f5603a;padding:4px 12px;border-radius:99px;color:var(--lime);font-weight:700;font-variant-numeric:tabular-nums}
-.gauge-center .gleft .pill.over{background:#ff5d5d1a;border-color:#ff5d5d3a;color:var(--red)}
+.gdate{font-size:13.5px;color:var(--mut);font-weight:500;text-align:center;margin:6px 0 4px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 18px}
+.ringbox{display:flex;flex-direction:column;align-items:center;min-width:0}
+.ringwrap{position:relative;width:100%;max-width:168px;aspect-ratio:160/150}
+.ringwrap svg{display:block;width:100%;height:100%}
+.rb-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:8px}
+.rb-lab{font-size:11.5px;color:var(--mut);font-weight:600}
+.rb-num{font-size:33px;font-weight:700;letter-spacing:-1.3px;line-height:1.15;font-variant-numeric:tabular-nums}
+.rb-sub{font-size:11px;color:var(--dim);font-weight:500}
+.gleft{display:flex;align-items:center;gap:7px;margin-top:2px;font-size:12.5px;color:var(--mut);font-weight:500;white-space:nowrap}
+.gleft .pill{background:#c8f5601a;border:1px solid #c8f5603a;padding:4px 11px;border-radius:99px;color:var(--lime);font-weight:700;font-variant-numeric:tabular-nums}
+.gleft .pill.over{background:#ff5d5d1a;border-color:#ff5d5d3a;color:var(--red)}
+.gleft .pill.fire{background:#ff7a591a;border-color:#ff7a593a;color:var(--coral)}
+.gleft .pill.fire.done{background:#c8f5601a;border-color:#c8f5603a;color:var(--lime)}
 .ringpath{transition:stroke-dasharray .9s cubic-bezier(.22,1,.36,1)}
-.statchips{display:flex;gap:10px;justify-content:center;margin:0 0 18px}
-.chip{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:500;color:var(--mut)}
-.chip b{color:var(--txt);font-weight:700}
-.chip .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;position:relative;top:-1px}
 
 /* ===== Macros ===== */
 .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -331,39 +333,46 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     <div class="stripbar"><button class="striphome" id="striphome" style="display:none" onclick="resetStrip()">Volver a hoy →</button></div>
     <div class="daystrip" id="daystrip"></div>
 
-    <div class="gaugewrap">
-      <svg id="gauge" width="300" height="265" viewBox="0 0 300 265">
-        <defs>
-          <!-- coords en el espacio rotado 135°: lima al inicio del arco, violeta hacia el final -->
-          <linearGradient id="ggrad" x1=".85" y1=".85" x2=".15" y2=".15">
-            <stop offset="0%" stop-color="#c8f560"/><stop offset="55%" stop-color="#3fe0c5"/><stop offset="100%" stop-color="#8b5cf6"/>
-          </linearGradient>
-          <linearGradient id="bgrad" x1=".85" y1=".85" x2=".15" y2=".15">
-            <stop offset="0%" stop-color="#f7b733"/><stop offset="55%" stop-color="#ff7a59"/><stop offset="100%" stop-color="#ff4d8d"/>
-          </linearGradient>
-        </defs>
-        <!-- anillo exterior: calorías consumidas -->
-        <circle cx="150" cy="140" r="120" fill="none" stroke="#18181c" stroke-width="14" stroke-linecap="round"
-          stroke-dasharray="565.5 754" transform="rotate(135 150 140)"/>
-        <circle id="garc" class="ringpath" cx="150" cy="140" r="120" fill="none" stroke="url(#ggrad)" stroke-width="14" stroke-linecap="round"
-          stroke-dasharray="0 754" transform="rotate(135 150 140)" style="filter:drop-shadow(0 0 12px #3fe0c550)"/>
-        <!-- anillo interior: calorías quemadas en ejercicio -->
-        <circle cx="150" cy="140" r="97" fill="none" stroke="#18181c" stroke-width="11" stroke-linecap="round"
-          stroke-dasharray="457.1 609.5" transform="rotate(135 150 140)"/>
-        <circle id="barc" class="ringpath" cx="150" cy="140" r="97" fill="none" stroke="url(#bgrad)" stroke-width="11" stroke-linecap="round"
-          stroke-dasharray="0 609.5" transform="rotate(135 150 140)" style="display:none;filter:drop-shadow(0 0 10px #ff7a5960)"/>
-        <circle id="gdot" r="6" fill="#fff" style="display:none;filter:drop-shadow(0 0 7px #ffffffcc)"/>
-      </svg>
-      <div class="gauge-center">
-        <div class="gdate" id="gdate">Hoy</div>
-        <div class="gnum"><span id="gkcal">0</span><small>kcal</small></div>
+    <div class="gdate" id="gdate">Hoy</div>
+    <div class="duo">
+      <div class="ringbox">
+        <div class="ringwrap">
+          <svg viewBox="0 0 160 150" aria-hidden="true">
+            <defs><!-- coords en el espacio rotado 135°: el color de inicio queda al arranque del arco -->
+              <linearGradient id="ggrad" x1=".85" y1=".85" x2=".15" y2=".15"><stop offset="0%" stop-color="#c8f560"/><stop offset="55%" stop-color="#3fe0c5"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#18181c" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="311 414.7" transform="rotate(135 80 80)"/>
+            <circle id="garc" class="ringpath" cx="80" cy="80" r="66" fill="none" stroke="url(#ggrad)" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="0 414.7" transform="rotate(135 80 80)" style="display:none;filter:drop-shadow(0 0 9px #3fe0c560)"/>
+            <circle id="gdot" r="4.5" fill="#fff" style="display:none;filter:drop-shadow(0 0 6px #ffffffcc)"/>
+          </svg>
+          <div class="rb-center">
+            <div class="rb-lab">🍽️ Consumidas</div>
+            <div class="rb-num"><span id="gkcal">0</span></div>
+            <div class="rb-sub" id="gsub">de 0 kcal</div>
+          </div>
+        </div>
         <div class="gleft">Restantes <span class="pill" id="gleftpill">0</span></div>
       </div>
-    </div>
-
-    <div class="statchips">
-      <div class="chip"><i class="cdot" style="background:linear-gradient(135deg,#c8f560,#3fe0c5)"></i>Meta <b id="cgoal">0</b></div>
-      <div class="chip"><i class="cdot" style="background:linear-gradient(135deg,#f7b733,#ff4d8d)"></i>Ejercicio <b id="cburn">0</b></div>
+      <div class="ringbox">
+        <div class="ringwrap">
+          <svg viewBox="0 0 160 150" aria-hidden="true">
+            <defs><!-- coords en el espacio rotado 135°: el color de inicio queda al arranque del arco -->
+              <linearGradient id="bgrad" x1=".85" y1=".85" x2=".15" y2=".15"><stop offset="0%" stop-color="#f7b733"/><stop offset="55%" stop-color="#ff7a59"/><stop offset="100%" stop-color="#ff4d8d"/></linearGradient></defs>
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#18181c" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="311 414.7" transform="rotate(135 80 80)"/>
+            <circle id="barc" class="ringpath" cx="80" cy="80" r="66" fill="none" stroke="url(#bgrad)" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="0 414.7" transform="rotate(135 80 80)" style="display:none;filter:drop-shadow(0 0 9px #ff7a5966)"/>
+            <circle id="bdot" r="4.5" fill="#fff" style="display:none;filter:drop-shadow(0 0 6px #ffffffcc)"/>
+          </svg>
+          <div class="rb-center">
+            <div class="rb-lab">🔥 Ejercicio</div>
+            <div class="rb-num"><span id="bkcal">0</span></div>
+            <div class="rb-sub" id="bsub">de 0 kcal</div>
+          </div>
+        </div>
+        <div class="gleft">Faltan <span class="pill fire" id="bleftpill">0</span></div>
+      </div>
     </div>
 
     <div class="macros" id="macros"></div>
@@ -953,11 +962,11 @@ const MACRO_DEFS=[
 ];
 
 // punto brillante que recorre el arco del gauge, sincronizado con la animación del trazo
-let gaugePct=0;
-function moveGaugeDot(to){
-  const dot=$('#gdot'), from=gaugePct; gaugePct=to;
+// punto brillante que recorre el arco, sincronizado con la animación del trazo (centro 80,80 · r 66)
+function moveDot(dot, to){
+  const from=dot._p||0; dot._p=to;
   const place=p=>{ const a=(135+270*p)*Math.PI/180;
-    dot.setAttribute('cx',150+120*Math.cos(a)); dot.setAttribute('cy',140+120*Math.sin(a)); };
+    dot.setAttribute('cx',80+66*Math.cos(a)); dot.setAttribute('cy',80+66*Math.sin(a)); };
   dot.style.display = to>0 ? 'block' : 'none';
   cancelAnimationFrame(dot._raf);
   const t0=performance.now(), dur=900;
@@ -965,6 +974,12 @@ function moveGaugeDot(to){
     place(from+(to-from)*(1-Math.pow(1-k,4)));
     if(k<1) dot._raf=requestAnimationFrame(step); };
   dot._raf=requestAnimationFrame(step);
+}
+function setRing(arcSel, dotSel, pct){
+  const C=2*Math.PI*66, arc=$(arcSel);
+  arc.setAttribute('stroke-dasharray', (C*0.75*pct)+' '+C);
+  arc.style.display = pct>0 ? 'block' : 'none';
+  moveDot($(dotSel), pct);
 }
 
 function renderHome(){
@@ -981,23 +996,24 @@ function renderHome(){
   animateNum(pill, Math.abs(left));
   pill.classList.toggle('over',left<0);
   pill.parentNode.firstChild.textContent = left<0 ? 'Excedidas ' : 'Restantes ';
-  $('#cburn').textContent=`${fmt(t.burn)} / ${fmt(g.burn||0)} kcal`;
-  $('#cgoal').textContent=fmt(g.cal)+' kcal';
+  $('#gsub').textContent=`de ${fmt(g.cal)} kcal`;
+
+  // ejercicio: quemadas vs meta de ejercicio
+  animateNum($('#bkcal'), t.burn);
+  $('#bsub').textContent=`de ${fmt(g.burn||0)} kcal`;
+  const bpill=$('#bleftpill'), bleft=(g.burn||0)-t.burn;
+  if(bleft>0){ animateNum(bpill, bleft); bpill.parentNode.firstChild.textContent='Faltan '; }
+  else{ bpill.dataset.val=0; bpill.textContent='✓'; bpill.parentNode.firstChild.textContent='Meta lograda '; }
+  bpill.classList.toggle('done', bleft<=0);
 
   if(isToday && g.cal>0 && t.kcal>=g.cal && !DB.celebratedDays.includes(k)){
     DB.celebratedDays.push(k); save(); celebrate();
   }
 
-  // gauge: 270° de arco, C=703.7
-  const C=2*Math.PI*120, ARC=C*0.75;
-  const pct=Math.min(1, g.cal>0 ? t.kcal/g.cal : 0);
-  $('#garc').setAttribute('stroke-dasharray', (ARC*pct)+' '+C);
+  // dos círculos de 270°: consumidas y ejercicio
+  setRing('#garc','#gdot', Math.min(1, g.cal>0 ? t.kcal/g.cal : 0));
   $('#garc').setAttribute('stroke', t.kcal>g.cal ? 'var(--red)' : 'url(#ggrad)');
-  $('#garc').style.display = pct>0 ? 'block' : 'none';
-  moveGaugeDot(pct);
-  const CB=2*Math.PI*97, bp=Math.min(1, g.burn>0 ? t.burn/g.burn : 0);
-  $('#barc').setAttribute('stroke-dasharray', (CB*0.75*bp)+' '+CB);
-  $('#barc').style.display = bp>0 ? 'block' : 'none';
+  setRing('#barc','#bdot', Math.min(1, g.burn>0 ? t.burn/g.burn : 0));
 
   // macros
   $('#macros').innerHTML = MACRO_DEFS.map(m=>{
