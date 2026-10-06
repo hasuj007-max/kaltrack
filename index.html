@@ -257,6 +257,10 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .brow b{color:var(--txt);font-weight:600}
 .bnote{font-size:11px;color:var(--dim);line-height:1.45;margin-top:8px}
 .duebanner{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#c8f5600f;border:1px solid #c8f56030;color:var(--lime);border-radius:16px;padding:12px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:0 0 12px;text-align:left}
+.duebanner.warn{background:#ff7a5914;border-color:#ff7a5944;color:var(--coral)}
+.storemeter{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin:8px 0 4px}
+.storemeter i{display:block;height:100%;background:var(--lime);border-radius:3px}
+.storemeter i.hi{background:var(--coral)}
 #nav{
   position:absolute;bottom:0;left:0;right:0;height:calc(72px + env(safe-area-inset-bottom));
   background:#0b0b0df2;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -469,6 +473,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <button class="ballink" id="baltoggle" onclick="toggleBal()">Ver desglose ▾</button>
       <div id="baldet" style="display:none"></div>
     </div>
+    <button class="duebanner warn" id="hstorebanner" style="display:none" onclick="goScreen('settings')"><span id="hstoretxt"></span><b>→</b></button>
     <button class="duebanner" id="hduebanner" style="display:none" onclick="goScreen('body')"><span id="hduetxt">📏 Te toca registrar tus medidas de la semana</span><b>→</b></button>
     <div class="macros" id="macros"></div>
 
@@ -730,6 +735,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 
     <div class="set-section">Datos</div>
     <div class="card">
+      <div class="projsub" id="storeinfo" style="margin:0 0 12px"></div>
       <button class="btn dark" onclick="exportData()">💾 Exportar respaldo (JSON)</button>
       <button class="btn dark" style="margin-top:9px" onclick="document.getElementById('importfile').click()">📂 Importar respaldo</button>
       <input type="file" id="importfile" accept="application/json,.json" hidden onchange="importData(event)">
@@ -1168,13 +1174,65 @@ const EXS = [
 ['Remo',8.5,'🚣'],['Escaladora',9,'🪜'],['Spinning',10,'🚴'],['Limpieza del hogar',3.5,'🧹']
 ].map((e,i)=>({id:'be'+i,n:e[0],rate:e[1],e:e[2]}));
 
+/* ================== GUARDADO COMPACTO ================== */
+// Safari en iPhone deja guardar ~2.6 millones de caracteres por sitio (medido en el simulador, iOS 26.5);
+// 3 años de registros completos ocupaban 3.4 M. En el teléfono se guarda compacto: lo que sale del catálogo
+// (nombre, emoji, porción, unidad) no se repite. En memoria y en el respaldo exportado todo sigue completo.
+const STORE_LIMIT=2.6e6;
+const FOODS_BY_ID=Object.fromEntries(FOODS.map(f=>[f.id,f]));
+const EXS_BY_NAME=Object.fromEntries(EXS.map(x=>[x.n,x]));
+const MEAL_CODE={desayuno:'d',comida:'c',cena:'n',snack:'s'}, MEAL_NAME={d:'desayuno',c:'comida',n:'cena',s:'snack'};
+const r2=v=>Math.round((+v||0)*100)/100;
+const onlyKeys=(o,keys)=>Object.keys(o).every(k=>keys.includes(k));
+// comida del catálogo → [id, cantidad, momento, kcal, P, C, G, gramos?]
+function packFood(e){
+  const f=FOODS_BY_ID[e.fid];
+  if(f && e.n===f.n && MEAL_CODE[e.meal] && (e.unit||'g')===(f.liquid?'ml':'g')
+     && onlyKeys(e,['n','e','portion','qty','meal','fid','kcal','p','c','f','grams','unit'])){
+    const a=[e.fid, e.qty, MEAL_CODE[e.meal], e.kcal, r2(e.p), r2(e.c), r2(e.f)];
+    if(e.grams!=null) a.push(e.grams);
+    return a;
+  }
+  return Object.assign({}, e, {p:r2(e.p), c:r2(e.c), f:r2(e.f)});   // alimentos propios: completos
+}
+function unpackFood(a){
+  if(!Array.isArray(a)) return a;
+  const [fid,qty,m,kcal,p,c,fat,grams]=a, f=FOODS_BY_ID[fid]||{n:'Alimento',e:'🍽️',portion:''};
+  return {n:f.n, e:f.e, portion:f.portion, qty, meal:MEAL_NAME[m]||'comida', fid, kcal, p, c, f:fat,
+    grams:grams??null, unit:f.liquid?'ml':'g'};
+}
+// ejercicio del catálogo → [nombre, minutos, kcal]
+const packEx=x=> EXS_BY_NAME[x.n] && x.e===EXS_BY_NAME[x.n].e && onlyKeys(x,['n','e','min','kcal']) ? [x.n,x.min,x.kcal] : x;
+const unpackEx=a=> Array.isArray(a) ? {n:a[0], e:(EXS_BY_NAME[a[0]]||{e:'🏃'}).e, min:a[1], kcal:a[2]} : a;
+// levantamiento → [id, ejercicio, fecha, kg, reps, kg, reps…]
+const packLift=l=> onlyKeys(l,['id','ex','d','sets']) && l.sets.every(s=>onlyKeys(s,['kg','reps']))
+  ? [l.id, l.ex, l.d, ...l.sets.flatMap(s=>[s.kg, s.reps])] : l;
+function unpackLift(a){
+  if(!Array.isArray(a)) return a;
+  const sets=[]; for(let i=3;i<a.length;i+=2) sets.push({kg:a[i], reps:a[i+1]});
+  return {id:a[0], ex:a[1], d:a[2], sets};
+}
+function packDB(){
+  const logs={};
+  for(const k in DB.logs){ const l=DB.logs[k];
+    logs[k]=Object.assign({}, l, {foods:(l.foods||[]).map(packFood), ex:(l.ex||[]).map(packEx)}); }
+  return JSON.stringify(Object.assign({}, DB, {logs, lifts:(DB.lifts||[]).map(packLift)}));
+}
+function unpackDB(d){
+  for(const k in d.logs||{}){ const l=d.logs[k];
+    l.foods=(l.foods||[]).map(unpackFood); l.ex=(l.ex||[]).map(unpackEx); }
+  if(d.lifts) d.lifts=d.lifts.map(unpackLift);
+  return d;
+}
+
 /* ================== ESTADO ================== */
 const LSKEY='kaltrack_v1';
 const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72,burn:400}, profile:{weight:null,target:null},
   customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[],
   measures:[], lifts:[], liftEx:[]};
-let DB;
-try{ DB = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(LSKEY)||'{}')); }
+let DB, storeUsed=0, storeFailed=false;
+try{ const raw=localStorage.getItem(LSKEY)||'{}'; storeUsed=raw.length;
+  DB = Object.assign({}, DEFAULTS, unpackDB(JSON.parse(raw))); }
 catch(e){ DB = JSON.parse(JSON.stringify(DEFAULTS)); }
 function migrate(){
   DB.goals = Object.assign({}, DEFAULTS.goals, DB.goals);
@@ -1191,7 +1249,26 @@ function migrate(){
   DB.favs=[...new Set(DB.favs.map(toRaw))]; DB.recents=[...new Set(DB.recents.map(toRaw))];
 }
 migrate();
-const save = ()=>localStorage.setItem(LSKEY, JSON.stringify(DB));
+// si el teléfono ya no tiene espacio, avisar fuerte (antes fallaba en silencio y lo nuevo se perdía al cerrar)
+function save(){
+  try{
+    const s=packDB(); localStorage.setItem(LSKEY, s);
+    storeUsed=s.length; storeFailed=false; return true;
+  }catch(e){
+    if(!storeFailed) alert('⚠️ No se pudo guardar: la memoria de KalTrack en este teléfono está llena.\n\n'
+      +'Lo último que registraste NO quedó guardado. Exporta tu respaldo en Ajustes → Datos.');
+    storeFailed=true;
+    const b=document.getElementById('hstorebanner'); if(b) renderStoreWarn();
+    return false;
+  }
+}
+const storePct=()=>Math.round(storeUsed/STORE_LIMIT*100);
+function renderStoreWarn(){
+  const pct=storePct(), show=storeFailed || pct>=80;
+  $('#hstorebanner').style.display = show ? 'flex' : 'none';
+  if(show) $('#hstoretxt').textContent = storeFailed ? '⚠️ No se pudo guardar: memoria llena. Exporta tu respaldo'
+    : `⚠️ La memoria de la app va al ${pct}%. Exporta tu respaldo`;
+}
 
 const $ = s=>document.querySelector(s);
 const pad = n=>String(n).padStart(2,'0');
@@ -1402,6 +1479,7 @@ function renderHome(){
   }).join('');
 
   renderBalance(t,k);
+  renderStoreWarn();
   const md=measureDue();
   $('#hduebanner').style.display = md.due ? 'flex' : 'none';
   $('#hduetxt').textContent = DB.measures.length ? '📏 Te toca registrar tus medidas de la semana' : '📏 Registra tus medidas para seguir tu progreso';
@@ -2630,6 +2708,7 @@ function renderSettings(){
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
   updMacHint();
   renderInstall();
+  renderStoreInfo();
   $('#myfoods').innerHTML = DB.customFoods.length ? DB.customFoods.map(f=>`<div class="lrow">
       <div class="lemoji">${f.e}</div>
       <div class="linfo"><div class="lname">${esc(f.n)}</div><div class="lsub">${esc(f.portion)} · ${fmt(f.kcal)} kcal</div></div>
@@ -2759,6 +2838,19 @@ async function doInstall(){
   if(outcome!=='accepted') toast('Instalación cancelada');
 }
 
+// cuánto espacio del teléfono usan tus datos y para cuánto tiempo alcanza a tu ritmo de registro
+function renderStoreInfo(){
+  const pct=storePct(), days=Object.keys(DB.logs).sort();
+  const span = days.length ? daysBetween(days[0], dkey(today()))+1 : 0;
+  let left='';
+  if(span>=30 && storeUsed>0){
+    const yrs=(STORE_LIMIT-storeUsed)/(storeUsed/span)/365;
+    left = yrs>=10 ? ' A tu ritmo te alcanza para más de 10 años.' : yrs>=1 ? ` A tu ritmo te alcanza para unos ${Math.floor(yrs)} año${yrs>=2?'s':''} más.` : ' Ya casi se llena: exporta tu respaldo.';
+  }
+  $('#storeinfo').innerHTML=`Espacio usado en este teléfono: <b>${pct}%</b>.${left}
+    <div class="storemeter"><i class="${pct>=80?'hi':''}" style="width:${Math.min(100,Math.max(1,pct))}%"></i></div>`;
+}
+
 /* ================== RESPALDO ================== */
 // En iPhone, una app instalada en la pantalla de inicio no siempre descarga archivos: primero se intenta
 // el menú Compartir de iOS ("Guardar en Archivos", AirDrop…); si no existe, descarga normal.
@@ -2785,6 +2877,7 @@ function importData(ev){
     try{
       const d=JSON.parse(r.result);
       if(!d || typeof d!=='object' || !d.goals || !d.logs) throw new Error('formato');
+      unpackDB(d);
       if(!confirm('Esto reemplazará tus datos actuales con el respaldo. ¿Continuar?')) return;
       DB=Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), d);
       migrate(); save(); selDate=today(); renderAll();
