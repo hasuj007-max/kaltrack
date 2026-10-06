@@ -657,7 +657,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
   <div class="sheet" id="sheet-fab">
     <div class="grab"></div>
     <div class="fmenu">
-      <button onclick="closeSheets();openFoodSheet('search')"><span class="ic">🍽️</span><span>Agregar comida<small>Busca en +140 alimentos o crea el tuyo</small></span></button>
+      <button onclick="closeSheets();openFoodSheet('search')"><span class="ic">🍽️</span><span>Agregar comida<small>Busca en casi 200 alimentos o crea el tuyo</small></span></button>
       <button onclick="closeSheets();openExSheet('search')"><span class="ic">🏃</span><span>Agregar ejercicio<small>Registra por duración</small></span></button>
       <button onclick="closeSheets();openWeightSheet()"><span class="ic">⚖️</span><span>Registrar peso<small>Actualiza tu evolución</small></span></button>
       <button onclick="openLiftSheet()"><span class="ic">🏋️</span><span>Registrar levantamiento<small>Series con kg × reps, récords y 1RM</small></span></button>
@@ -853,16 +853,27 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 // [nombre, porción, kcal, prot, carb, grasa]
 const RAW = [
 ['Proteínas','🍗',[
-['Pechuga de pollo','100 g',165,31,0,3.6],['Muslo de pollo','100 g',209,26,0,11],
-['Carne de res magra','100 g',250,26,0,15],['Carne molida 80/20','100 g',254,17,0,20],
-['Bistec de res','100 g',271,26,0,18],['Lomo de cerdo','100 g',143,21,0,6],
-['Chuleta de cerdo','100 g',231,25,0,14],['Pavo molido','100 g',170,21,0,9],
-['Salmón','100 g',208,20,0,13],['Atún en agua (lata)','100 g',116,26,0,1],
-['Atún fresco','100 g',144,23,0,5],['Tilapia','100 g',96,20,0,2],
-['Camarones','100 g',99,24,0,0.3],['Sardinas (lata)','100 g',208,25,0,11],
+['Pechuga de pollo cocida','100 g',165,31,0,3.6],['Muslo de pollo cocido (sin piel)','100 g',209,26,0,11],
+['Carne de res magra cocida','100 g',250,26,0,15],['Carne molida de res 80/20 cruda','100 g',254,17,0,20],
+['Bistec de res cocido','100 g',271,26,0,18],['Lomo de cerdo crudo','100 g',143,21,0,6],
+['Chuleta de cerdo cocida','100 g',231,25,0,14],['Pavo molido cocido','100 g',203,27.4,0,10.4],
+['Salmón crudo','100 g',208,20,0,13],['Atún en agua (lata)','100 g',116,26,0,1],
+['Atún fresco crudo','100 g',144,23,0,5],['Tilapia cruda','100 g',96,20,0,2],
+['Camarones cocidos','100 g',99,24,0,0.3],['Sardinas (lata)','100 g',208,25,0,11],
 ['Huevo entero','1 pieza',72,6,0.4,5],['Clara de huevo','1 pieza',17,3.6,0.2,0],
 ['Jamón de pavo','2 rebanadas',60,9,2,1.5],['Tocino','2 tiras',90,6,0.3,7],
-['Chorizo','50 g',230,12,1,19],['Tofu','100 g',76,8,2,4.5]]],
+['Chorizo','50 g',230,12,1,19],['Tofu','100 g',76,8,2,4.5],
+['Pechuga de pollo cruda','100 g',120,22.5,0,2.6],['Muslo de pollo crudo (sin piel)','100 g',119,19.7,0,3.9],
+['Pierna de pollo cruda (sin piel)','100 g',116,20.2,0,3.4],['Alitas de pollo crudas (con piel)','100 g',191,17.5,0,12.8],
+['Pechuga de pavo cruda','100 g',114,23.7,0,1.5],['Pavo molido 93/7 crudo','100 g',150,18.7,0,8.3],
+['Carne molida de res 95/5 cruda','100 g',137,21.4,0,5],['Carne molida de res 90/10 cruda','100 g',176,20,0,10],
+['Carne molida de res 85/15 cruda','100 g',215,18.6,0,15],['Bistec de res magro (sirloin) crudo','100 g',143,22,0,6],
+['Bistec de bola/pulpa crudo','100 g',120,23.2,0,2.9],['Arrachera cruda','100 g',190,19.5,0,12.5],
+['Hígado de res crudo','100 g',135,20.4,3.9,3.6],['Filete de cerdo crudo','100 g',109,21,0,2.2],
+['Carne molida de cerdo cruda','100 g',263,16.9,0,21.2],['Salmón salvaje crudo','100 g',142,19.8,0,6.3],
+['Atún aleta amarilla crudo','100 g',109,24.4,0,0.5],['Camarones crudos','100 g',85,20.1,0,0.5],
+['Bacalao crudo','100 g',82,17.8,0,0.7],['Huachinango crudo','100 g',100,20.5,0,1.3],
+['Atún en aceite (lata, escurrido)','100 g',198,29.1,0,8.2],['Pollo rostizado (con piel)','100 g',239,27.3,0,13.6]]],
 ['Carbohidratos','🍚',[
 ['Arroz blanco cocido','1 taza',205,4,45,0.4],['Arroz integral cocido','1 taza',216,5,45,1.8],
 ['Pasta cocida','1 taza',220,8,43,1.3],['Pan blanco','1 rebanada',75,2.5,14,1],
@@ -872,7 +883,13 @@ const RAW = [
 ['Quinoa cocida','1 taza',222,8,39,3.6],['Frijoles cocidos','1 taza',245,15,45,1],
 ['Lentejas cocidas','1 taza',230,18,40,0.8],['Garbanzos cocidos','1 taza',269,15,45,4],
 ['Elote','1 mazorca',90,3,19,1.4],['Cereal de maíz','1 taza',110,2,24,0.5],
-['Granola','1/2 taza',220,5,32,9],['Bagel','1 pieza',245,10,48,1.5],['Arepa','1 pieza',220,5,40,5]]],
+['Granola','1/2 taza',220,5,32,9],['Bagel','1 pieza',245,10,48,1.5],['Arepa','1 pieza',220,5,40,5],
+['Arroz blanco crudo','100 g',365,7.1,80,0.7],['Arroz integral crudo','100 g',370,7.9,77.2,2.9],
+['Pasta seca cruda','100 g',371,13,74.7,1.5],['Quinoa cruda','100 g',368,14.1,64.2,6.1],
+['Frijol negro crudo (seco)','100 g',341,21.6,62.4,1.4],['Lentejas crudas (secas)','100 g',352,24.6,63.4,1.1],
+['Papa cruda','100 g',77,2,17.5,0.1],['Camote crudo','100 g',86,1.6,20.1,0.1],
+['Bolillo','1 pieza',190,6.4,37,1.5],['Pan pita','1 pieza',165,5.5,33.4,0.7],
+['Tostada horneada','1 pieza',50,1.2,9,1],['Galleta de arroz','1 pieza',35,0.7,7.3,0.3]]],
 ['Frutas','🍎',[
 ['Manzana','1 mediana',95,0.5,25,0.3],['Plátano','1 mediano',105,1.3,27,0.4],
 ['Naranja','1 mediana',62,1.2,15,0.2],['Fresas','1 taza',49,1,12,0.5],
@@ -882,7 +899,9 @@ const RAW = [
 ['Pera','1 mediana',101,0.6,27,0.2],['Durazno','1 mediano',59,1.4,14,0.4],
 ['Kiwi','1 pieza',42,0.8,10,0.4],['Aguacate','1/2 pieza',120,1.5,6,11],
 ['Arándanos','1 taza',84,1.1,21,0.5],['Cerezas','1 taza',87,1.5,22,0.3],
-['Coco rallado','30 g',100,1,4,9.5]]],
+['Coco rallado','30 g',100,1,4,9.5],
+['Guayaba','1 pieza',37,1.4,7.9,0.5],['Mandarina','1 pieza',47,0.7,11.8,0.3],
+['Toronja','1/2 pieza',52,0.9,13.1,0.2],['Frambuesas','1 taza',64,1.5,14.7,0.8],['Dátil','1 pieza',66,0.4,18,0]]],
 ['Verduras','🥦',[
 ['Brócoli','1 taza',31,2.6,6,0.3],['Espinaca','1 taza',7,0.9,1.1,0.1],
 ['Lechuga','1 taza',5,0.5,1,0.1],['Tomate','1 mediano',22,1.1,4.8,0.2],
@@ -891,7 +910,9 @@ const RAW = [
 ['Calabacín','1 taza',21,1.5,3.9,0.4],['Coliflor','1 taza',27,2,5,0.3],
 ['Champiñones','1 taza',15,2.2,2.3,0.2],['Ejotes','1 taza',31,1.8,7,0.2],
 ['Apio','1 tallo',6,0.3,1.2,0.1],['Betabel','1/2 taza',37,1.4,8.5,0.2],
-['Espárragos','6 piezas',20,2.2,3.7,0.2]]],
+['Espárragos','6 piezas',20,2.2,3.7,0.2],
+['Nopales cocidos','1 taza',22,2,4.9,0.1],['Jícama','1 taza',46,0.9,10.6,0.1],
+['Col','1 taza',22,1.1,5.2,0.1],['Chayote cocido','1 taza',38,1,8.2,0.8],['Chile jalapeño','1 pieza',4,0.1,0.9,0.1]]],
 ['Lácteos','🥛',[
 ['Leche entera','1 taza',149,8,12,8],['Leche descremada','1 taza',83,8,12,0.2],
 ['Leche de almendra','1 taza',39,1,3.5,2.5],['Yogur natural','1 taza',149,8.5,11,8],
@@ -899,7 +920,8 @@ const RAW = [
 ['Queso cheddar','30 g',121,7,0.4,10],['Queso Oaxaca','30 g',105,7,1,8],
 ['Queso cottage','1/2 taza',110,12.5,4.5,5],['Queso crema','2 cdas',99,1.8,1.6,9.8],
 ['Crema','2 cdas',100,1,1,10],['Mantequilla','1 cda',102,0.1,0,11.5],
-['Helado de vainilla','1/2 taza',137,2.3,16,7]]],
+['Helado de vainilla','1/2 taza',137,2.3,16,7],
+['Queso panela','30 g',78,5.4,0.9,6],['Yogur griego natural 0%','100 g',59,10.2,3.6,0.4]]],
 ['Snacks y dulces','🍫',[
 ['Papas fritas (bolsa)','40 g',214,2.8,21,13.6],['Galletas María','4 piezas',90,1.5,15,2.5],
 ['Galleta choco chip','1 pieza',78,0.9,9.3,4.5],['Chocolate con leche','40 g',214,3,24,12],
@@ -930,13 +952,19 @@ const RAW = [
 ['Ensalada César','1 plato',180,7,10,13],['Sushi roll','8 piezas',300,9,45,8],
 ['Nuggets de pollo','6 piezas',280,13,18,17],['Papas a la francesa','orden mediana',365,4,48,17],
 ['Sandwich jamón y queso','1 pieza',350,18,33,16],['Enchiladas','2 piezas',320,14,28,17],
-['Chilaquiles','1 plato',380,12,40,19],['Ceviche','1 taza',120,18,8,2]]]
+['Chilaquiles','1 plato',380,12,40,19],['Ceviche','1 taza',120,18,8,2]]],
+['Grasas y extras','🫒',[
+['Aceite de oliva','1 cda',119,0,0,13.5],['Aceite vegetal','1 cda',120,0,0,13.6],['Mayonesa','1 cda',94,0.1,0.1,10.3],
+['Semillas de chía','1 cda',58,2,5,3.7],['Linaza molida','1 cda',37,1.3,2,2.9],['Semillas de girasol','30 g',175,6.2,6,15.4],
+['Pistaches','30 g',168,6,8.3,13.5],['Miel','1 cda',64,0.1,17.3,0],['Azúcar','1 cdita',16,0,4,0],
+['Mermelada','1 cda',56,0.1,13.8,0],['Catsup','1 cda',17,0.2,4.5,0],['Salsa roja o verde','2 cdas',10,0.4,2,0.1]]]
 ];
 // gramos (o ml en bebidas) que pesa cada porción del catálogo, para registrar por peso exacto
 const GRAMS = {
-'Pechuga de pollo':100,'Muslo de pollo':100,'Carne de res magra':100,'Carne molida 80/20':100,'Bistec de res':100,'Lomo de cerdo':100,
-'Chuleta de cerdo':100,'Pavo molido':100,'Salmón':100,'Atún en agua (lata)':100,'Atún fresco':100,'Tilapia':100,
-'Camarones':100,'Sardinas (lata)':100,'Huevo entero':50,'Clara de huevo':33,'Jamón de pavo':56,'Tocino':16,
+'Pechuga de pollo cruda':100,'Muslo de pollo crudo (sin piel)':100,'Pierna de pollo cruda (sin piel)':100,'Alitas de pollo crudas (con piel)':100,'Pechuga de pavo cruda':100,'Pavo molido 93/7 crudo':100,'Carne molida de res 95/5 cruda':100,'Carne molida de res 90/10 cruda':100,'Carne molida de res 85/15 cruda':100,'Bistec de res magro (sirloin) crudo':100,'Bistec de bola/pulpa crudo':100,'Arrachera cruda':100,'Hígado de res crudo':100,'Filete de cerdo crudo':100,'Carne molida de cerdo cruda':100,'Salmón salvaje crudo':100,'Atún aleta amarilla crudo':100,'Camarones crudos':100,'Bacalao crudo':100,'Huachinango crudo':100,'Atún en aceite (lata, escurrido)':100,'Pollo rostizado (con piel)':100,'Arroz blanco crudo':100,'Arroz integral crudo':100,'Pasta seca cruda':100,'Quinoa cruda':100,'Frijol negro crudo (seco)':100,'Lentejas crudas (secas)':100,'Papa cruda':100,'Camote crudo':100,'Bolillo':70,'Pan pita':60,'Tostada horneada':12,'Galleta de arroz':9,'Guayaba':55,'Mandarina':88,'Toronja':123,'Frambuesas':123,'Dátil':24,'Nopales cocidos':149,'Jícama':120,'Col':89,'Chayote cocido':160,'Chile jalapeño':14,'Queso panela':30,'Yogur griego natural 0%':100,'Aceite de oliva':13.5,'Aceite vegetal':13.6,'Mayonesa':13.8,'Semillas de chía':12,'Linaza molida':7,'Semillas de girasol':30,'Pistaches':30,'Miel':21,'Azúcar':4,'Mermelada':20,'Catsup':17,'Salsa roja o verde':30,
+'Pechuga de pollo cocida':100,'Muslo de pollo cocido (sin piel)':100,'Carne de res magra cocida':100,'Carne molida de res 80/20 cruda':100,'Bistec de res cocido':100,'Lomo de cerdo crudo':100,
+'Chuleta de cerdo cocida':100,'Pavo molido cocido':100,'Salmón crudo':100,'Atún en agua (lata)':100,'Atún fresco crudo':100,'Tilapia cruda':100,
+'Camarones cocidos':100,'Sardinas (lata)':100,'Huevo entero':50,'Clara de huevo':33,'Jamón de pavo':56,'Tocino':16,
 'Chorizo':50,'Tofu':100,'Arroz blanco cocido':158,'Arroz integral cocido':195,'Pasta cocida':140,'Pan blanco':28,
 'Pan integral':32,'Tortilla de maíz':26,'Tortilla de harina':45,'Avena cruda':40,'Papa cocida':173,'Camote':130,
 'Quinoa cocida':185,'Frijoles cocidos':172,'Lentejas cocidas':198,'Garbanzos cocidos':164,'Elote':103,'Cereal de maíz':28,
@@ -963,8 +991,11 @@ const LIQUID_CAT='Bebidas';
 const FOODS = [];
 RAW.forEach(([cat,emoji,items],ci)=>items.forEach((it,i)=>{
   FOODS.push({id:'b'+ci+'_'+i, n:it[0], portion:it[1], kcal:it[2], p:it[3], c:it[4], f:it[5], e:emoji, cat,
-    g:GRAMS[it[0]]||null, liquid:cat===LIQUID_CAT});
+    g:GRAMS[it[0]]||null, liquid:cat===LIQUID_CAT, ci, ix:i});
 }));
+// el id depende de la posición original (registros viejos lo usan); solo se reordena la vista: crudos primero
+const isRawFood=f=>/\bcrud[oa]s?\b/i.test(f.n);
+FOODS.sort((a,b)=> a.ci-b.ci || isRawFood(b)-isRawFood(a) || (isRawFood(a) ? a.n.localeCompare(b.n,'es') : a.ix-b.ix));
 
 // [nombre, kcal/min, emoji]
 const EXS = [
@@ -1283,6 +1314,7 @@ function toggleFav(id){
 }
 function openFoodSheet(tab){
   openSheet('sheet-food'); foodTab(tab||'search');
+  $('#food-title').textContent='Agregar comida';
   $('#foodq').value=''; renderFoodResults('');
 }
 function foodTab(t){
