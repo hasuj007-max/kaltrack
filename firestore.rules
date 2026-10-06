@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Cada quien lee y escribe SOLO lo suyo; nadie (ni otra cuenta) puede ver tu peso ni tu comida.
+    function esDueno(uid){
+      return request.auth != null && request.auth.uid == uid;
+    }
+    // Lo que se sube: los datos compactos como texto + la hora del cambio (para decidir qué copia es más nueva)
+    function formatoOk(){
+      return request.resource.data.keys().hasOnly(['u', 'datos'])
+             && request.resource.data.u is int
+             && request.resource.data.datos is string
+             && request.resource.data.datos.size() < 1000000;
+    }
+
+    // perfil, metas, pesajes, medidas, favoritos y alimentos propios
+    match /usuarios/{uid} {
+      allow read, delete: if esDueno(uid);
+      allow create, update: if esDueno(uid) && formatoOk();
+
+      // comida, ejercicio y levantamientos de un mes (AAAA-MM): así ningún documento llega al límite de 1 MB
+      match /meses/{mes} {
+        allow read, delete: if esDueno(uid);
+        allow create, update: if esDueno(uid) && mes.matches('^[0-9]{4}-[0-9]{2}$') && formatoOk();
+      }
+    }
+  }
+}

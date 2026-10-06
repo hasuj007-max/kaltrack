@@ -733,6 +733,14 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <button class="btn" id="installbtn" style="display:none" onclick="doInstall()">📲 Instalar app</button>
     </div>
 
+    <div class="set-section">Respaldo en la nube</div>
+    <div class="card" id="cloudcard">
+      <div class="projsub" id="cloudtxt" style="margin:0 0 12px;line-height:1.55">Cargando…</div>
+      <button class="btn" id="cloudnew" style="display:none" onclick="location.href=NEW_URL">Abrir la nueva dirección →</button>
+      <button class="btn" id="cloudin" style="display:none" onclick="Nube.entrar()">Iniciar sesión con Google</button>
+      <button class="btn dark" id="cloudout" style="display:none" onclick="Nube.salir()">Cerrar sesión</button>
+    </div>
+
     <div class="set-section">Datos</div>
     <div class="card">
       <div class="projsub" id="storeinfo" style="margin:0 0 12px"></div>
@@ -957,6 +965,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     </div>
     <button class="btn" style="margin-top:16px" onclick="saveOnboard()">Empezar 🚀</button>
     <button class="backlink" style="text-align:center;margin-top:10px" onclick="skipOnboard()">Omitir, pondré mis metas manualmente</button>
+    <button class="btn dark" id="ob-cloud" style="margin-top:14px;display:none" onclick="Nube.entrar()">¿Ya usas KalTrack? Entra con Google</button>
   </div>
 
   <div class="toastwrap" id="toastwrap"></div>
@@ -1253,7 +1262,9 @@ migrate();
 function save(){
   try{
     const s=packDB(); localStorage.setItem(LSKEY, s);
-    storeUsed=s.length; storeFailed=false; return true;
+    storeUsed=s.length; storeFailed=false;
+    if(window.Nube) Nube.programar();   // sube a la nube unos segundos después del último cambio
+    return true;
   }catch(e){
     if(!storeFailed) alert('⚠️ No se pudo guardar: la memoria de KalTrack en este teléfono está llena.\n\n'
       +'Lo último que registraste NO quedó guardado. Exporta tu respaldo en Ajustes → Datos.');
@@ -1480,6 +1491,7 @@ function renderHome(){
 
   renderBalance(t,k);
   renderStoreWarn();
+  if(OLD_HOST){ $('#hstorebanner').style.display='flex'; $('#hstoretxt').textContent='📦 KalTrack se mudó: toca para pasar tus datos a la nueva app'; }
   const md=measureDue();
   $('#hduebanner').style.display = md.due ? 'flex' : 'none';
   $('#hduetxt').textContent = DB.measures.length ? '📏 Te toca registrar tus medidas de la semana' : '📏 Registra tus medidas para seguir tu progreso';
@@ -2709,6 +2721,7 @@ function renderSettings(){
   updMacHint();
   renderInstall();
   renderStoreInfo();
+  renderCloud();
   $('#myfoods').innerHTML = DB.customFoods.length ? DB.customFoods.map(f=>`<div class="lrow">
       <div class="lemoji">${f.e}</div>
       <div class="linfo"><div class="lname">${esc(f.n)}</div><div class="lsub">${esc(f.portion)} · ${fmt(f.kcal)} kcal</div></div>
@@ -2799,9 +2812,12 @@ $('#s-sex').addEventListener('click',e=>{
   DB.profile.sex=b.dataset.v; save(); renderSettings(); renderHome(); toast('Perfil guardado');
 });
 function resetAll(){
-  if(!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  const nube=!!(window.Nube && Nube.estado().user);
+  if(!confirm(nube ? '¿Borrar TODOS los datos, de este teléfono Y de tu respaldo en la nube? Esta acción no se puede deshacer.'
+                   : '¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
   localStorage.removeItem(LSKEY);
   DB=JSON.parse(JSON.stringify(DEFAULTS));
+  if(nube) Nube.subirYa({permitirVacio:true});   // único caso en que se permite dejar la nube vacía
   selDate=today(); renderAll(); toast('Datos borrados');
   openOnboard();
 }
@@ -2957,6 +2973,124 @@ function skipOnboard(){
   $('#onboard').classList.remove('on');
 }
 
+/* ================== NUBE: lógica de sincronización ================== */
+// El teléfono manda: todo se guarda aquí al instante y la nube va detrás (Firebase: módulo al final).
+// En la nube hay una parte 'main' (perfil, metas, pesajes, medidas, favoritos, alimentos propios) y una por
+// mes 'AAAA-MM' con su comida, ejercicio y levantamientos: ningún documento llega al límite de 1 MB.
+const SYNCKEY='kaltrack_sync', EMPTY_MONTH='{"logs":{},"lifts":[]}';
+const OLD_HOST=/github\.io$/.test(location.hostname), NEW_URL='https://kaltrack-app.firebaseapp.com/';
+function hashStr(s){   // cyrb53: huella corta para saber si una parte cambió
+  let h1=0xdeadbeef, h2=0x41c6ce57;
+  for(let i=0;i<s.length;i++){ const ch=s.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+// h = huella de cada parte la última vez que coincidió con la nube; u = hora de esa versión en la nube
+function syncMeta(){ try{ return Object.assign({uid:null,h:{},u:{}}, JSON.parse(localStorage.getItem(SYNCKEY)||'{}')); }catch(e){ return {uid:null,h:{},u:{}}; } }
+function setSyncMeta(m){ try{ localStorage.setItem(SYNCKEY, JSON.stringify(m)); }catch(e){} }
+function cloudParts(){
+  const months={}, get=ym=>months[ym]||(months[ym]={logs:{},lifts:[]});
+  for(const k of Object.keys(DB.logs).sort()){ const l=DB.logs[k];
+    if(!(l.foods||[]).length && !(l.ex||[]).length) continue;
+    get(k.slice(0,7)).logs[k]=Object.assign({}, l, {foods:(l.foods||[]).map(packFood), ex:(l.ex||[]).map(packEx)}); }
+  DB.lifts.slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.id<b.id?-1:1)).forEach(l=>get(l.d.slice(0,7)).lifts.push(packLift(l)));
+  const main=Object.assign({}, DB); delete main.logs; delete main.lifts;
+  const parts={main:JSON.stringify(main)};
+  for(const ym of Object.keys(months).sort()) parts[ym]=JSON.stringify(months[ym]);
+  return parts;
+}
+const looksEmpty=()=> !DB.weights.length && !DB.lifts.length && !DB.measures.length
+  && !Object.values(DB.logs).some(l=>(l.foods||[]).length||(l.ex||[]).length);
+// qué partes hay que subir: las que cambiaron desde que coincidieron con la nube (un mes que se vació también)
+function pendingParts(){
+  const parts=cloudParts(), m=syncMeta(), out=[];
+  for(const p in m.h) if(!(p in parts) && p!=='main') parts[p]=EMPTY_MONTH;
+  for(const p in parts){ const h=hashStr(parts[p]); if(h!==m.h[p]) out.push({p, h, datos:parts[p]}); }
+  return out;
+}
+function markSynced(p,h,u){ const m=syncMeta(); m.h[p]=h; m.u[p]=u; setSyncMeta(m); }
+// replace: la nube es más nueva y aquí no hubo cambios → se toma tal cual.
+// union: los dos cambiaron (o es el primer enlace con datos en ambos lados) → se juntan, y en lo repetido gana el teléfono
+function mergeMonth(ym, datos, mode){
+  const c=JSON.parse(datos);
+  if(mode==='replace'){
+    for(const k of Object.keys(DB.logs)) if(k.startsWith(ym)) delete DB.logs[k];
+    DB.lifts=DB.lifts.filter(l=>!l.d.startsWith(ym));
+  }
+  // al juntar un mismo día se suman los registros que este teléfono no tenga (comparados ya compactos)
+  const addMissing=(mine, theirs, pack, unpack)=>{
+    const have=new Map();
+    mine.forEach(e=>{ const s=JSON.stringify(pack(e)); have.set(s,(have.get(s)||0)+1); });
+    (theirs||[]).forEach(a=>{ const s=JSON.stringify(a); if(have.get(s)) have.set(s,have.get(s)-1); else mine.push(unpack(a)); });
+  };
+  for(const k in c.logs||{}){
+    const mine=DB.logs[k], l=c.logs[k];
+    if(mode==='union' && mine){
+      mine.foods=mine.foods||[]; mine.ex=mine.ex||[];
+      addMissing(mine.foods, l.foods, packFood, unpackFood); addMissing(mine.ex, l.ex, packEx, unpackEx);
+      continue;
+    }
+    DB.logs[k]=Object.assign({}, l, {foods:(l.foods||[]).map(unpackFood), ex:(l.ex||[]).map(unpackEx)});
+  }
+  const ids=new Set(DB.lifts.map(l=>l.id));
+  (c.lifts||[]).map(unpackLift).forEach(l=>{ if(!ids.has(l.id)) DB.lifts.push(l); });
+}
+function mergeMain(datos, mode){
+  const c=JSON.parse(datos);
+  if(mode==='replace'){ for(const k in c) if(k!=='logs' && k!=='lifts') DB[k]=c[k]; return; }
+  const byKey=(mine,theirs,key)=>{ const m=new Map((theirs||[]).map(x=>[x[key],x])); (mine||[]).forEach(x=>m.set(x[key],x)); return [...m.values()]; };
+  const uniq=(a,b)=>[...new Set([...(a||[]), ...(b||[])])];
+  DB.weights=byKey(DB.weights,c.weights,'d').sort((a,b)=>a.d<b.d?-1:1);
+  DB.measures=byKey(DB.measures,c.measures,'d').sort((a,b)=>a.d<b.d?-1:1);
+  DB.customFoods=byKey(DB.customFoods,c.customFoods,'id'); DB.customEx=byKey(DB.customEx,c.customEx,'id');
+  DB.favs=uniq(DB.favs,c.favs); DB.liftEx=uniq(DB.liftEx,c.liftEx); DB.celebratedDays=uniq(DB.celebratedDays,c.celebratedDays);
+  if(!DB.onboarded && c.onboarded){ DB.profile=c.profile; DB.goals=c.goals; DB.onboarded=true; }
+}
+// lo que llega de la nube: {parte: {u, datos}}. Devuelve true si cambió algo aquí.
+function mergeFromCloud(cloud, uid){
+  const m=syncMeta(), local=cloudParts(), fresh=looksEmpty();
+  let touched=false;
+  for(const p of Object.keys(cloud).sort()){
+    const c=cloud[p];
+    if(!c || typeof c.datos!=='string') continue;
+    if(m.u[p]===c.u && m.h[p]!=null) continue;                      // esa versión ya la teníamos
+    const lh=hashStr(local[p]!=null ? local[p] : (p==='main' ? '' : EMPTY_MONTH));
+    const localChanged = !fresh && (m.h[p]==null ? local[p]!=null : lh!==m.h[p]);
+    if(p==='main') mergeMain(c.datos, localChanged?'union':'replace');
+    else mergeMonth(p, c.datos, localChanged?'union':'replace');
+    m.h[p]=hashStr(c.datos); m.u[p]=c.u; touched=true;
+  }
+  m.uid=uid; setSyncMeta(m);
+  if(touched){ migrate(); syncProfileWeight(); }
+  return touched;
+}
+// tarjeta de Ajustes y aviso de mudanza
+function renderCloud(){
+  const el=$('#cloudtxt'); if(!el) return;
+  const show=(id,v)=>{ $('#'+id).style.display=v?'':'none'; };
+  show('cloudnew',OLD_HOST); show('cloudin',false); show('cloudout',false);
+  if(OLD_HOST){
+    el.innerHTML=`📦 <b>KalTrack se mudó</b> a una dirección nueva con respaldo en la nube. Para pasar tus datos:<br>
+      1. Toca <b>Exportar respaldo</b> (abajo) y guárdalo en Archivos.<br>2. Abre la nueva dirección y agrégala a tu pantalla de inicio.<br>
+      3. Ahí entra con Google y toca <b>Importar respaldo</b>.`;
+    return;
+  }
+  const N=window.Nube, s=N && N.estado();
+  if(!N){ el.textContent='El respaldo en la nube necesita internet para cargar. Tus datos siguen guardados en este teléfono.'; return; }
+  if(!s.user){
+    el.innerHTML='Guarda tus datos en tu cuenta de Google: si pierdes o cambias de teléfono, no pierdes nada.'
+      +(s.loginErr?`<br><span style="color:var(--coral)">⚠️ ${esc(s.loginErr)}</span>`:'');
+    show('cloudin',true); return;
+  }
+  const hace=t=>{ const m=Math.round((Date.now()-t)/60000); return m<1?'hace un momento':m<60?`hace ${m} min`:`hace ${Math.round(m/60)} h`; };
+  const st = s.lastErr ? `<span style="color:var(--coral)">⚠️ ${esc(s.lastErr)}</span>`
+    : !s.pulled ? 'Leyendo tu respaldo…' : s.pendientes ? 'Subiendo cambios…'
+    : '✓ Todo respaldado'+(s.lastOk?` (${hace(s.lastOk)})`:'');
+  el.innerHTML=`☁️ Conectado como <b>${esc(s.user.email||'tu cuenta')}</b><br>${st}`;
+  show('cloudout',true);
+}
+
 /* ================== RENDER GLOBAL ================== */
 function renderAll(){
   renderHome();
@@ -2976,6 +3110,141 @@ if(!DB.onboarded) openOnboard();
 // PWA: instalable y offline cuando se sirve por http(s); abierta como archivo sigue funcionando igual
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
+
+<script type="module">
+/* ================== NUBE: Firebase ==================
+   Esta configuración es pública a propósito: la seguridad vive en las reglas de Firestore
+   (cada cuenta solo lee y escribe lo suyo) y en los dominios autorizados.
+   Si este módulo no carga (sin internet), la app sigue funcionando con lo guardado en el teléfono. */
+if(!OLD_HOST){
+const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js");
+const { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+  = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js");
+const { getFirestore, doc, getDoc, getDocs, setDoc, collection }
+  = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
+
+const app=initializeApp({
+  apiKey:"AIzaSyB8h5Uu-TP9KR_7HHoBhnVMx81VOJfUv80",
+  // Debe ser el mismo dominio desde el que se sirve la app (.firebaseapp.com, no .web.app): si difieren,
+  // Safari corta la credencial y la app instalada en el iPhone se queda girando (lección de Impulsa).
+  authDomain:"kaltrack-app.firebaseapp.com",
+  projectId:"kaltrack-app",
+  storageBucket:"kaltrack-app.firebasestorage.app",
+  messagingSenderId:"837371389527",
+  appId:"1:837371389527:web:91ff91fb7992b554b7e512"
+});
+const auth=getAuth(app), db=getFirestore(app);
+const refMain=uid=>doc(db,'usuarios',uid), refMes=(uid,ym)=>doc(db,'usuarios',uid,'meses',ym);
+let user=null, pulled=false, timer=null, pushing=null, lastOk=null, lastErr=null, loginErr=null, lastPull=0;
+const pintar=()=>{ renderCloud(); $('#ob-cloud').style.display = user ? 'none' : ''; };
+
+// leer TODA la nube antes de subir nada: así un teléfono vacío nunca pisa tu respaldo
+async function bajar(){
+  const uid=user.uid, cloud={};
+  const [m, meses]=await Promise.all([getDoc(refMain(uid)), getDocs(collection(db,'usuarios',uid,'meses'))]);
+  if(!user || user.uid!==uid) return;
+  if(m.exists()) cloud.main=m.data();
+  meses.forEach(d=>{ cloud[d.id]=d.data(); });
+  const changed=mergeFromCloud(cloud, uid);
+  pulled=true; lastPull=Date.now(); lastErr=null;
+  if(changed){
+    save(); renderAll();
+    if(DB.onboarded) $('#onboard').classList.remove('on');
+    toast('☁️ Datos de tu cuenta cargados');
+  }
+}
+async function subir(op={}){
+  if(!user || !pulled) return;
+  while(pushing) await pushing;   // una subida a la vez; al terminar la anterior se sube lo que cambió mientras
+  pushing=(async()=>{
+    try{
+      if(looksEmpty() && Object.keys(syncMeta().h).length && !op.permitirVacio){
+        lastErr='Este teléfono está vacío: no se sube nada para no borrar tu respaldo.'; return;
+      }
+      for(const x of pendingParts()){
+        const u=Date.now();
+        await setDoc(x.p==='main' ? refMain(user.uid) : refMes(user.uid,x.p), {u, datos:x.datos});
+        markSynced(x.p, x.h, u);
+      }
+      lastOk=Date.now(); lastErr=null;
+    }catch(e){
+      lastErr = navigator.onLine===false ? 'Sin internet: se sube cuando vuelva la conexión.' : 'No se pudo subir ('+(e.code||e.message)+').';
+    }finally{ pushing=null; pintar(); }
+  })();
+  return pushing;
+}
+
+const proveedor=new GoogleAuthProvider();
+proveedor.setCustomParameters({prompt:'select_account'});
+const MARCA_REDIRECT='kaltrack_redirigiendo';
+const explicar=e=>{ const c=(e&&e.code)||'';
+  return c==='auth/unauthorized-domain' ? 'Este dominio no está autorizado en Firebase.'
+    : c==='auth/network-request-failed' ? 'Sin conexión. Revisa tu internet e inténtalo otra vez.'
+    : c==='auth/operation-not-allowed' ? 'El inicio con Google aún no está activado en Firebase.'
+    : 'No se pudo iniciar sesión ('+(c||'error')+').'; };
+/* En la app instalada en iOS el login va SIEMPRE por ventana emergente: se abre encima de la app, que no navega
+   ni pierde su estado. La redirección se rompe ahí (el viaje a Google borra la sesión temporal de Firebase y
+   el usuario vuelve como si nada): queda solo de respaldo, con una marca para avisar si se perdió. */
+async function entrar(){
+  loginErr=null; pintar();
+  try{ await signInWithPopup(auth, proveedor); localStorage.removeItem(MARCA_REDIRECT); }
+  catch(e){
+    const c=(e&&e.code)||'';
+    if(c==='auth/popup-closed-by-user' || c==='auth/cancelled-popup-request') return;
+    if(c==='auth/popup-blocked' || c==='auth/operation-not-supported-in-this-environment' || c==='auth/internal-error'){
+      try{ localStorage.setItem(MARCA_REDIRECT, String(Date.now())); await signInWithRedirect(auth, proveedor); }
+      catch(e2){ localStorage.removeItem(MARCA_REDIRECT); loginErr=explicar(e2); pintar(); }
+    }else{ loginErr=explicar(e); pintar(); }
+  }
+}
+getRedirectResult(auth)
+  .then(r=>{ if(r && r.user) localStorage.removeItem(MARCA_REDIRECT); })
+  .catch(e=>{ localStorage.removeItem(MARCA_REDIRECT); if(e && e.code){ loginErr=explicar(e); pintar(); } });
+setTimeout(()=>{
+  if(localStorage.getItem(MARCA_REDIRECT) && !auth.currentUser){
+    localStorage.removeItem(MARCA_REDIRECT);
+    loginErr='El inicio de sesión no se completó. Toca el botón otra vez.'; pintar();
+  }
+}, 4000);
+
+// cerrar sesión deja el teléfono en blanco (tus datos quedan en tu cuenta), pero solo si ya se subió todo
+async function salir(){
+  if(!confirm('¿Cerrar sesión? Tus datos quedan en tu cuenta de Google y se borran de este teléfono.')) return;
+  clearTimeout(timer); await subir();
+  if(pendingParts().length){ alert('Hay cambios que todavía no se suben (¿sin internet?). Conéctate e inténtalo otra vez para no perderlos.'); return; }
+  await signOut(auth);
+  localStorage.removeItem(LSKEY); localStorage.removeItem(SYNCKEY);
+  location.reload();
+}
+
+onAuthStateChanged(auth, async u=>{
+  user=u; pulled=false; pintar();
+  if(!u) return;
+  const m=syncMeta();
+  if(m.uid && m.uid!==u.uid){
+    alert('Este teléfono tiene los datos de otra cuenta de Google. Entra con la cuenta con la que los respaldaste.');
+    await signOut(auth); return;
+  }
+  try{ await bajar(); await subir(); }
+  catch(e){ lastErr='No se pudo leer tu respaldo ('+(e.code||e.message)+'). Se reintenta al volver a abrir la app.'; }
+  pintar();
+});
+// al volver a la app: traer cambios de otro aparato; al salir: subir ya (iOS puede congelar la app antes del temporizador)
+document.addEventListener('visibilitychange',()=>{
+  if(!user) return;
+  if(document.visibilityState==='hidden'){ if(pulled){ clearTimeout(timer); subir(); } }
+  else if(Date.now()-lastPull>60000) bajar().then(()=>subir()).catch(()=>{});
+});
+
+window.Nube={
+  programar(){ if(!user || !pulled) return; clearTimeout(timer); timer=setTimeout(()=>subir(), 2500); },
+  subirYa:subir, entrar, salir,
+  estado:()=>({user: user && {email:user.email}, pulled, lastOk, lastErr, loginErr,
+    pendientes: user && pulled ? pendingParts().length : 0})
+};
+pintar();
 }
 </script>
 </body>
