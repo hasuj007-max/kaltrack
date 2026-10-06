@@ -71,7 +71,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .gaugewrap{position:relative;display:flex;justify-content:center;margin:2px 0 0}
 .gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:14px}
 .gauge-center .gdate{font-size:13.5px;color:var(--mut);font-weight:500;margin-bottom:2px}
-.gauge-center .gnum{font-size:60px;font-weight:700;letter-spacing:-2.5px;line-height:1.05;font-variant-numeric:tabular-nums}
+.gauge-center .gnum{font-size:52px;font-weight:700;letter-spacing:-2px;line-height:1.05;font-variant-numeric:tabular-nums}
 .gauge-center .gnum small{font-size:18px;font-weight:500;color:var(--mut);letter-spacing:0;margin-left:5px}
 .gauge-center .gleft{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13.5px;color:var(--mut);font-weight:500}
 .gauge-center .gleft .pill{background:#c8f5601a;border:1px solid #c8f5603a;padding:4px 12px;border-radius:99px;color:var(--lime);font-weight:700;font-variant-numeric:tabular-nums}
@@ -80,6 +80,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .statchips{display:flex;gap:10px;justify-content:center;margin:0 0 18px}
 .chip{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:500;color:var(--mut)}
 .chip b{color:var(--txt);font-weight:700}
+.chip .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;position:relative;top:-1px}
 
 /* ===== Macros ===== */
 .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -337,11 +338,20 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
           <linearGradient id="ggrad" x1=".85" y1=".85" x2=".15" y2=".15">
             <stop offset="0%" stop-color="#c8f560"/><stop offset="55%" stop-color="#3fe0c5"/><stop offset="100%" stop-color="#8b5cf6"/>
           </linearGradient>
+          <linearGradient id="bgrad" x1=".85" y1=".85" x2=".15" y2=".15">
+            <stop offset="0%" stop-color="#f7b733"/><stop offset="55%" stop-color="#ff7a59"/><stop offset="100%" stop-color="#ff4d8d"/>
+          </linearGradient>
         </defs>
-        <circle cx="150" cy="140" r="112" fill="none" stroke="#18181c" stroke-width="14" stroke-linecap="round"
-          stroke-dasharray="527.8 703.7" transform="rotate(135 150 140)"/>
-        <circle id="garc" class="ringpath" cx="150" cy="140" r="112" fill="none" stroke="url(#ggrad)" stroke-width="14" stroke-linecap="round"
-          stroke-dasharray="0 703.7" transform="rotate(135 150 140)" style="filter:drop-shadow(0 0 12px #3fe0c550)"/>
+        <!-- anillo exterior: calorías consumidas -->
+        <circle cx="150" cy="140" r="120" fill="none" stroke="#18181c" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="565.5 754" transform="rotate(135 150 140)"/>
+        <circle id="garc" class="ringpath" cx="150" cy="140" r="120" fill="none" stroke="url(#ggrad)" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="0 754" transform="rotate(135 150 140)" style="filter:drop-shadow(0 0 12px #3fe0c550)"/>
+        <!-- anillo interior: calorías quemadas en ejercicio -->
+        <circle cx="150" cy="140" r="97" fill="none" stroke="#18181c" stroke-width="11" stroke-linecap="round"
+          stroke-dasharray="457.1 609.5" transform="rotate(135 150 140)"/>
+        <circle id="barc" class="ringpath" cx="150" cy="140" r="97" fill="none" stroke="url(#bgrad)" stroke-width="11" stroke-linecap="round"
+          stroke-dasharray="0 609.5" transform="rotate(135 150 140)" style="display:none;filter:drop-shadow(0 0 10px #ff7a5960)"/>
         <circle id="gdot" r="6" fill="#fff" style="display:none;filter:drop-shadow(0 0 7px #ffffffcc)"/>
       </svg>
       <div class="gauge-center">
@@ -352,8 +362,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     </div>
 
     <div class="statchips">
-      <div class="chip">🔥 Quemadas <b id="cburn">0</b></div>
-      <div class="chip">🎯 Meta <b id="cgoal">0</b></div>
+      <div class="chip"><i class="cdot" style="background:linear-gradient(135deg,#c8f560,#3fe0c5)"></i>Meta <b id="cgoal">0</b></div>
+      <div class="chip"><i class="cdot" style="background:linear-gradient(135deg,#f7b733,#ff4d8d)"></i>Ejercicio <b id="cburn">0</b></div>
     </div>
 
     <div class="macros" id="macros"></div>
@@ -474,6 +484,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="field"><label>Grasa (g)</label><input type="number" inputmode="numeric" id="s-f"></div>
       </div>
       <div class="machint" id="machint"></div>
+      <div class="field"><label>Meta de ejercicio (kcal quemadas al día)</label><input type="number" inputmode="numeric" id="s-burn"></div>
       <div class="togglerow">
         <div><b>Sumar ejercicio a restantes</b><small>Si quemas 300 kcal, tus calorías disponibles del día suben 300</small></div>
         <button class="tgl" id="extoggle" onclick="toggleExAdd()"></button>
@@ -786,7 +797,7 @@ const EXS = [
 
 /* ================== ESTADO ================== */
 const LSKEY='kaltrack_v1';
-const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72}, profile:{weight:null,target:null},
+const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72,burn:400}, profile:{weight:null,target:null},
   customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[]};
 let DB;
 try{ DB = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(LSKEY)||'{}')); }
@@ -946,7 +957,7 @@ let gaugePct=0;
 function moveGaugeDot(to){
   const dot=$('#gdot'), from=gaugePct; gaugePct=to;
   const place=p=>{ const a=(135+270*p)*Math.PI/180;
-    dot.setAttribute('cx',150+112*Math.cos(a)); dot.setAttribute('cy',140+112*Math.sin(a)); };
+    dot.setAttribute('cx',150+120*Math.cos(a)); dot.setAttribute('cy',140+120*Math.sin(a)); };
   dot.style.display = to>0 ? 'block' : 'none';
   cancelAnimationFrame(dot._raf);
   const t0=performance.now(), dur=900;
@@ -970,7 +981,7 @@ function renderHome(){
   animateNum(pill, Math.abs(left));
   pill.classList.toggle('over',left<0);
   pill.parentNode.firstChild.textContent = left<0 ? 'Excedidas ' : 'Restantes ';
-  $('#cburn').textContent=fmt(t.burn)+' kcal';
+  $('#cburn').textContent=`${fmt(t.burn)} / ${fmt(g.burn||0)} kcal`;
   $('#cgoal').textContent=fmt(g.cal)+' kcal';
 
   if(isToday && g.cal>0 && t.kcal>=g.cal && !DB.celebratedDays.includes(k)){
@@ -978,12 +989,15 @@ function renderHome(){
   }
 
   // gauge: 270° de arco, C=703.7
-  const C=703.7, ARC=C*0.75;
+  const C=2*Math.PI*120, ARC=C*0.75;
   const pct=Math.min(1, g.cal>0 ? t.kcal/g.cal : 0);
   $('#garc').setAttribute('stroke-dasharray', (ARC*pct)+' '+C);
   $('#garc').setAttribute('stroke', t.kcal>g.cal ? 'var(--red)' : 'url(#ggrad)');
   $('#garc').style.display = pct>0 ? 'block' : 'none';
   moveGaugeDot(pct);
+  const CB=2*Math.PI*97, bp=Math.min(1, g.burn>0 ? t.burn/g.burn : 0);
+  $('#barc').setAttribute('stroke-dasharray', (CB*0.75*bp)+' '+CB);
+  $('#barc').style.display = bp>0 ? 'block' : 'none';
 
   // macros
   $('#macros').innerHTML = MACRO_DEFS.map(m=>{
@@ -1679,7 +1693,7 @@ function renderProjection(){
 /* ================== AJUSTES ================== */
 function renderSettings(){
   $('#s-cal').value=DB.goals.cal; $('#s-p').value=DB.goals.p;
-  $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f;
+  $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f; $('#s-burn').value=DB.goals.burn;
   $('#s-w').value=DB.profile.weight??''; $('#s-wt').value=DB.profile.target??'';
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
   updMacHint();
@@ -1722,10 +1736,10 @@ function saveGoals(){
   if(!cal||cal<=0){toast('Meta de calorías inválida');return;}
   const macrosTocados = p!==DB.goals.p || c!==DB.goals.c || f!==DB.goals.f;
   if(cal!==DB.goals.cal && !macrosTocados){
-    DB.goals=Object.assign({cal}, macrosFromCal(cal));
+    DB.goals=Object.assign({}, DB.goals, {cal}, macrosFromCal(cal));
     toast('Meta y macros ajustados 🎯');
   }else{
-    DB.goals={cal, p:p>0?p:DB.goals.p, c:c>0?c:DB.goals.c, f:f>0?f:DB.goals.f};
+    DB.goals=Object.assign({}, DB.goals, {cal, p:p>0?p:DB.goals.p, c:c>0?c:DB.goals.c, f:f>0?f:DB.goals.f});
     toast('Metas guardadas 🎯');
   }
   save(); renderAll();
@@ -1744,7 +1758,7 @@ function toggleExAdd(){
 $('#s-cal').addEventListener('change',()=>{
   const v=parseInt($('#s-cal').value);
   if(v>0){
-    DB.goals=Object.assign({cal:v}, macrosFromCal(v)); // macros se reajustan en proporción
+    DB.goals=Object.assign({}, DB.goals, {cal:v}, macrosFromCal(v)); // macros se reajustan en proporción
     save(); renderSettings(); renderHome(); toast('Meta y macros ajustados 🎯');
   } else renderSettings(); // valor inválido: restaurar el guardado
 });
@@ -1754,6 +1768,11 @@ $('#s-cal').addEventListener('change',()=>{
     if(v>0){ DB.goals[key]=v; save(); renderHome(); updMacHint(); toast('Meta actualizada 🎯'); }
     else renderSettings();
   });
+});
+$('#s-burn').addEventListener('change',()=>{
+  const v=parseInt($('#s-burn').value);
+  if(v>0){ DB.goals.burn=v; save(); renderHome(); toast('Meta de ejercicio actualizada 🔥'); }
+  else renderSettings();
 });
 ['s-cal','s-p','s-c','s-f'].forEach(id=>$('#'+id).addEventListener('input',updMacHint));
 ['s-w','s-wt'].forEach(id=>$('#'+id).addEventListener('change',()=>saveProfile()));
@@ -1872,7 +1891,7 @@ function openOnboard(){
 function saveOnboard(){
   const r=obCalc();
   if(!r){ toast('Completa edad, altura y peso válidos'); return; }
-  DB.goals={cal:r.cal, p:r.p, c:r.c, f:r.f};
+  DB.goals=Object.assign({}, DB.goals, {cal:r.cal, p:r.p, c:r.c, f:r.f});
   Object.assign(DB.profile,{
     weight:r.w, sex:ob.sex, age:parseFloat($('#ob-age').value),
     height:parseFloat($('#ob-h').value), act:$('#ob-act').value, goalType:ob.goalType
