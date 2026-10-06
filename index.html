@@ -213,6 +213,39 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .hrow .hi{flex:1;min-width:0;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .hrow .hi small{display:block;font-size:11px;color:var(--mut);font-weight:500;margin-top:2px}
 .prtag{font-size:10.5px;font-weight:700;color:var(--amber);background:#f7b7331a;border-radius:6px;padding:2px 6px;margin-left:6px;white-space:nowrap}
+.libgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.libcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 0 11px;overflow:hidden;text-align:left;color:var(--txt);font:inherit;cursor:pointer;min-width:0}
+.libcard:active{opacity:.6}
+.libcard img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;background:var(--card2)}
+.libcard .lbn{font-size:12.5px;font-weight:600;padding:9px 10px 0;line-height:1.25}
+.libcard .lbs{font-size:11px;color:var(--mut);font-weight:500;padding:3px 10px 0}
+.lfprev{display:flex;gap:8px;align-items:center;background:var(--card2);border-radius:14px;padding:8px;margin:0 0 12px}
+.lfprev img{width:62px;height:42px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.lfprev b{display:block;font-size:12.5px;font-weight:600}
+.lfprev small{display:block;font-size:11px;color:var(--mut);margin-top:3px;line-height:1.35}
+.xitags{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
+.xiimgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.xiimgs figure{margin:0}
+.xiimgs img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:12px;background:var(--card2)}
+.xiimgs figcaption{font-size:11px;color:var(--mut);text-align:center;margin-top:5px;font-weight:600}
+.howto{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:13px 16px;margin-bottom:12px}
+.howto summary{cursor:pointer;font-size:14px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.howto summary::-webkit-details-marker{display:none}
+.howto summary::after{content:'▾';color:var(--mut);transition:transform .2s}
+.howto[open] summary::after{transform:rotate(180deg)}
+.howto ul{margin:12px 0 2px 16px;font-size:12.5px;color:#c9c9cf;line-height:1.55}
+.howto li{margin-bottom:7px}
+.howto b{color:var(--txt);font-weight:600}
+.balrow{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;margin-bottom:6px}
+.balrow .bl{font-size:11.5px;color:var(--mut);font-weight:500;margin-bottom:3px}
+.balrow .bv{font-size:22px;font-weight:700;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+.balrow .bv.lime{color:var(--lime)} .balrow .bv.coral{color:var(--coral)}
+.balrow .bop{font-size:18px;color:var(--dim);padding-bottom:2px}
+.ballink{border:none;background:none;color:var(--mut);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:6px 0 0}
+#baldet{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.brow{display:flex;justify-content:space-between;font-size:13px;color:#c9c9cf;padding:5px 0;font-variant-numeric:tabular-nums}
+.brow b{color:var(--txt);font-weight:600}
+.bnote{font-size:11px;color:var(--dim);line-height:1.45;margin-top:8px}
 .duebanner{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#c8f5600f;border:1px solid #c8f56030;color:var(--lime);border-radius:16px;padding:12px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:0 0 12px;text-align:left}
 #nav{
   position:absolute;bottom:0;left:0;right:0;height:calc(72px + env(safe-area-inset-bottom));
@@ -412,6 +445,12 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       </div>
     </div>
 
+    <div class="card balcard" id="balcard">
+      <div class="cardhead"><h3>Balance del día</h3><span class="badge" id="balbadge">—</span></div>
+      <div id="balbody"></div>
+      <button class="ballink" id="baltoggle" onclick="toggleBal()">Ver desglose ▾</button>
+      <div id="baldet" style="display:none"></div>
+    </div>
     <button class="duebanner" id="hduebanner" style="display:none" onclick="goScreen('body')"><span id="hduetxt">📏 Te toca registrar tus medidas de la semana</span><b>→</b></button>
     <div class="macros" id="macros"></div>
 
@@ -529,7 +568,19 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     </header>
     <h1 class="title">Tu fuerza<small>Cada kilo cuenta. Supera tu marca.</small></h1>
     <button class="btn" onclick="openLiftSheet()">🏋️ Registrar levantamiento</button>
-    <div class="row3" style="margin-top:12px">
+    <button class="btn dark" style="margin-top:8px" onclick="openLiftSheet('__new')">✍️ Crear mi propio ejercicio</button>
+    <details class="howto" style="margin-top:12px">
+      <summary>¿Cómo funciona Fuerza?</summary>
+      <ul>
+        <li><b>Registra cada sesión:</b> el ejercicio y cada serie con su peso (kg) y repeticiones. Ej: 60×8, 60×8, 62.5×6.</li>
+        <li><b>1RM estimado:</b> el peso máximo que podrías levantar 1 sola vez, calculado de tu mejor serie (fórmula de Epley: peso × (1 + reps/30)). Sirve para comparar días aunque cambies peso y reps: 60×10 y 70×5 dan casi lo mismo.</li>
+        <li><b>🏆 Récord (PR):</b> cuando tu 1RM del día supera tu mejor marca anterior en ese ejercicio.</li>
+        <li><b>Volumen:</b> kg × reps de todas tus series sumadas; es el trabajo total que hiciste.</li>
+        <li><b>Sobrecarga progresiva:</b> al registrar te precargo lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
+        <li><b>Peso corporal</b> (dominadas, fondos, lagartijas): escribe solo el peso extra (0 si no cargas nada); tu peso se suma solo.</li>
+      </ul>
+    </details>
+    <div class="row3">
       <div class="ins"><div class="il">Sesiones</div><div class="iv" id="lk-ses">0</div><div class="is">últimos 7 días</div></div>
       <div class="ins"><div class="il">Volumen</div><div class="iv" id="lk-vol">0</div><div class="is">últimos 7 días</div></div>
       <div class="ins"><div class="il">Récords 🏆</div><div class="iv" id="lk-pr">0</div><div class="is">últimos 30 días</div></div>
@@ -554,6 +605,12 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     </div>
     <h2 class="sect" id="exgridtitle">Tus ejercicios</h2>
     <div class="exgrid" id="exgrid"></div>
+
+    <h2 class="sect">Biblioteca de ejercicios</h2>
+    <div class="chips" id="libgroups"></div>
+    <div class="chips" id="libequip" style="margin-top:-6px"></div>
+    <div class="libgrid" id="libgrid"></div>
+    <div class="projsub" style="margin:0 2px 8px">Fotos de referencia de free-exercise-db (dominio público). Toca un ejercicio para verlo y registrarlo.</div>
   </section>
 
   <!-- ============ MEDIDAS ============ -->
@@ -611,6 +668,14 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="field"><label>Peso actual (kg)</label><input type="number" inputmode="decimal" step="0.1" id="s-w"></div>
         <div class="field"><label>Peso objetivo (kg)</label><input type="number" inputmode="decimal" step="0.1" id="s-wt"></div>
       </div>
+      <div class="field"><label>Sexo</label><div class="seg" id="s-sex"><button data-v="m">Hombre</button><button data-v="f">Mujer</button></div></div>
+      <div class="fgrid">
+        <div class="field"><label>Edad</label><input type="number" inputmode="numeric" id="s-age"></div>
+        <div class="field"><label>Altura (cm)</label><input type="number" inputmode="numeric" id="s-h"></div>
+        <div class="field"><label>Pasos al día (promedio)</label><input type="number" inputmode="numeric" id="s-steps"></div>
+        <div class="field"><label>Horas de sueño</label><input type="number" inputmode="decimal" step="0.5" id="s-sleep"></div>
+      </div>
+      <div class="machint" style="margin-top:-2px">Con estos datos se calcula tu gasto del día en Hoy.</div>
       <button class="btn" onclick="saveProfile()">Guardar perfil</button>
       <button class="btn dark" style="margin-top:9px" onclick="openWeightSheet()">⚖️ Registrar peso de hoy</button>
     </div>
@@ -795,13 +860,25 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     <h2 id="lift-title">Registrar levantamiento</h2>
     <div class="sheetbody">
       <div class="field"><label>Ejercicio</label><select id="lf-ex"></select></div>
-      <div class="field" id="lf-newwrap" style="display:none"><label>Nombre del ejercicio</label><input id="lf-new" placeholder="Ej. Press Arnold" autocomplete="off"></div>
+      <div class="field" id="lf-newwrap" style="display:none"><label>Nombre de tu ejercicio</label><input id="lf-new" placeholder="Ej. Press Arnold" autocomplete="off"></div>
       <div class="field"><label>Fecha</label><input type="date" id="lf-date"></div>
-      <div class="setshead"><span>Serie</span><span>Kg</span><span>Reps</span><span></span></div>
+      <div class="lfprev" id="lf-prev" style="display:none"></div>
+      <div class="setshead"><span>Serie</span><span id="lf-kghead">Kg</span><span>Reps</span><span></span></div>
       <div id="lf-sets"></div>
       <button class="btn dark" onclick="addSet()">+ Agregar serie</button>
       <div class="liftlive" id="lf-live"></div>
       <button class="btn" style="margin-top:12px" onclick="saveLift()">Guardar</button>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet-exinfo">
+    <div class="grab"></div>
+    <h2 id="xi-name"></h2>
+    <div class="sheetbody">
+      <div class="xitags" id="xi-tags"></div>
+      <div class="xiimgs" id="xi-imgs"></div>
+      <div class="projsub" style="margin:2px 0 14px">Fotos de referencia para darte una idea del movimiento: posición inicial y final.</div>
+      <button class="btn" id="xi-go">🏋️ Registrar este ejercicio</button>
     </div>
   </div>
 
@@ -1240,6 +1317,7 @@ function renderHome(){
     </div>`;
   }).join('');
 
+  renderBalance(t);
   const md=measureDue();
   $('#hduebanner').style.display = md.due ? 'flex' : 'none';
   $('#hduetxt').textContent = DB.measures.length ? '📏 Te toca registrar tus medidas de la semana' : '📏 Registra tus medidas para seguir tu progreso';
@@ -1957,6 +2035,50 @@ function renderProjection(){
   $('#projsub').textContent=`Faltan ${Math.abs(Math.round(falta*10)/10)} kg · unas ${semanas} semana${semanas===1?'':'s'}. Calculado con tus ${pts.length} pesajes de los últimos ${Math.round(spanDias)} días.`;
 }
 
+/* ================== BALANCE DEL DÍA ================== */
+// Gasto estimado del día completo: basal (Mifflin-St Jeor, incluye las horas de sueño) + pasos + digestión + ejercicio.
+// No toca la meta de calorías: la meta ya incluye tu actividad, sumarlo a "restantes" lo contaría doble.
+function dayBurnEstimate(t){
+  const pr=DB.profile, w=pr.weight, h=pr.height, a=pr.age, sex=pr.sex||'m';
+  if(!(w>0 && h>0 && a>0)) return null;
+  const bmr = 10*w + 6.25*h - 5*a + (sex==='f' ? -161 : 5);
+  const sleepH = pr.sleepH ?? 7.5, steps = pr.steps ?? 10000;
+  const sleep = bmr/24*sleepH, rest = bmr - sleep;
+  const km = steps * h*(sex==='f'?0.413:0.415)/100 / 1000;   // largo de zancada ≈ 41.5% de la altura
+  const walk = 0.5*w*km;                                     // caminar ≈ 0.5 kcal por kg por km (sobre el reposo)
+  const tef = 0.10*t.kcal;                                   // digerir cuesta ~10% de lo que comes
+  return {bmr, sleep, rest, walk, tef, ex:t.burn, total:bmr+walk+tef+t.burn, sleepH, steps, km};
+}
+let balOpen=false;
+function toggleBal(){ balOpen=!balOpen; renderHome(); }
+function renderBalance(t){
+  const e=dayBurnEstimate(t), badge=$('#balbadge');
+  $('#baltoggle').style.display = e ? 'block' : 'none';
+  if(!e){
+    badge.textContent='Falta tu perfil'; badge.className='badge warn';
+    $('#balbody').innerHTML=`<div class="projsub" style="margin:0 0 10px">Pon tu edad, altura y sexo para calcular cuánto gastas al día (dormir + ${fmt(DB.profile.steps??10000)} pasos).</div>
+      <button class="btn dark" onclick="goScreen('settings')">Completar perfil</button>`;
+    $('#baldet').style.display='none'; return;
+  }
+  const d=e.total-t.kcal, deficit=d>=0, good = deficit===((DB.profile.goalType||'bajar')!=='subir');
+  badge.textContent = deficit ? `Déficit ${fmt(d)} kcal` : `Superávit ${fmt(-d)} kcal`;
+  badge.className = 'badge '+(good ? 'green' : 'warn');
+  $('#balbody').innerHTML=`<div class="balrow">
+      <div><div class="bl">Gastas</div><div class="bv">${fmt(e.total)}</div></div><div class="bop">−</div>
+      <div><div class="bl">Comiste</div><div class="bv">${fmt(t.kcal)}</div></div><div class="bop">=</div>
+      <div><div class="bl">${deficit?'Déficit':'Superávit'}</div><div class="bv ${good?'lime':'coral'}">${fmt(Math.abs(d))}</div></div>
+    </div>`;
+  $('#baltoggle').textContent = balOpen ? 'Ocultar desglose ▴' : 'Ver desglose ▾';
+  const row=(ic,n,v)=>`<div class="brow"><span>${ic} ${n}</span><b>${fmt(v)}</b></div>`;
+  $('#baldet').style.display = balOpen ? 'block' : 'none';
+  $('#baldet').innerHTML = row('😴',`Dormir (${r1(e.sleepH)} h)`,e.sleep)
+    + row('🧍','Resto del día en reposo',e.rest)
+    + row('🚶',`${fmt(e.steps)} pasos (~${r1(e.km)} km)`,e.walk)
+    + row('🍽️','Digestión (10% de lo que comes)',e.tef)
+    + (e.ex ? row('🔥','Ejercicio registrado',e.ex) : '')
+    + `<div class="bnote">Estimado con la fórmula Mifflin-St Jeor (${DB.profile.age} años, ${r1(DB.profile.weight)} kg, ${DB.profile.height} cm). Se recalcula solo cada día; cámbialo en Ajustes → Mi perfil.</div>`;
+}
+
 /* ================== MEDIDAS ================== */
 const MKEYS=[
   {k:'leg',  n:'Pierna',  e:'🦵', upGood:true},
@@ -2034,34 +2156,108 @@ function renderBody(){
 }
 
 /* ================== FUERZA ================== */
-const LIFT_PRESETS=['Press de banca','Sentadilla','Peso muerto','Press militar','Remo con barra','Dominadas',
-  'Press inclinado','Prensa de pierna','Hip thrust','Curl de bíceps','Extensión de tríceps','Fondos'];
+// Biblioteca: [nombre, grupo, equipo, foto de free-exercise-db (dominio público) en ex/, usa peso corporal]
+const LIB=[
+['Press de banca con barra','Pecho','Barra','Barbell_Bench_Press_-_Medium_Grip'],
+['Press de banca con mancuernas','Pecho','Mancuernas','Dumbbell_Bench_Press'],
+['Press inclinado con barra','Pecho','Barra','Barbell_Incline_Bench_Press_-_Medium_Grip'],
+['Press inclinado con mancuernas','Pecho','Mancuernas','Incline_Dumbbell_Press'],
+['Aperturas con mancuernas','Pecho','Mancuernas','Dumbbell_Flyes'],
+['Press de pecho en máquina','Pecho','Máquina','Leverage_Chest_Press'],
+['Aperturas en máquina (pec deck)','Pecho','Máquina','Butterfly'],
+['Cruces en polea','Pecho','Polea','Cable_Crossover'],
+['Fondos en paralelas','Pecho','Peso corporal','Dips_-_Chest_Version',1],
+['Lagartijas','Pecho','Peso corporal','Pushups',1],
+['Dominadas','Espalda','Peso corporal','Pullups',1],
+['Jalón al pecho en polea','Espalda','Polea','Wide-Grip_Lat_Pulldown'],
+['Remo con barra','Espalda','Barra','Bent_Over_Barbell_Row'],
+['Remo con mancuerna a una mano','Espalda','Mancuernas','One-Arm_Dumbbell_Row'],
+['Remo sentado en polea','Espalda','Polea','Seated_Cable_Rows'],
+['Remo en máquina','Espalda','Máquina','Leverage_High_Row'],
+['Peso muerto con barra','Espalda','Barra','Barbell_Deadlift'],
+['Pullover con mancuerna','Espalda','Mancuernas','Bent-Arm_Dumbbell_Pullover'],
+['Press militar con barra','Hombro','Barra','Standing_Military_Press'],
+['Press de hombro con mancuernas','Hombro','Mancuernas','Dumbbell_Shoulder_Press'],
+['Press de hombro en máquina','Hombro','Máquina','Machine_Shoulder_Military_Press'],
+['Elevaciones laterales','Hombro','Mancuernas','Side_Lateral_Raise'],
+['Elevaciones frontales','Hombro','Mancuernas','Front_Dumbbell_Raise'],
+['Pájaros (deltoide posterior)','Hombro','Mancuernas','Seated_Bent-Over_Rear_Delt_Raise'],
+['Face pull en polea','Hombro','Polea','Face_Pull'],
+['Encogimientos con mancuernas','Hombro','Mancuernas','Dumbbell_Shrug'],
+['Curl con barra','Bíceps','Barra','Barbell_Curl'],
+['Curl con mancuernas','Bíceps','Mancuernas','Dumbbell_Bicep_Curl'],
+['Curl martillo','Bíceps','Mancuernas','Hammer_Curls'],
+['Curl en banco Scott','Bíceps','Barra','Preacher_Curl'],
+['Curl en polea','Bíceps','Polea','Standing_Biceps_Cable_Curl'],
+['Extensión de tríceps en polea','Tríceps','Polea','Triceps_Pushdown'],
+['Press francés','Tríceps','Barra','EZ-Bar_Skullcrusher'],
+['Extensión de tríceps sobre la cabeza','Tríceps','Mancuernas','Standing_Dumbbell_Triceps_Extension'],
+['Fondos en banco','Tríceps','Peso corporal','Bench_Dips',1],
+['Patada de tríceps','Tríceps','Mancuernas','Tricep_Dumbbell_Kickback'],
+['Sentadilla con barra','Pierna','Barra','Barbell_Full_Squat'],
+['Sentadilla goblet','Pierna','Mancuernas','Goblet_Squat'],
+['Prensa de pierna','Pierna','Máquina','Leg_Press'],
+['Sentadilla hack en máquina','Pierna','Máquina','Hack_Squat'],
+['Extensión de cuádriceps','Pierna','Máquina','Leg_Extensions'],
+['Curl femoral acostado','Pierna','Máquina','Lying_Leg_Curls'],
+['Curl femoral sentado','Pierna','Máquina','Seated_Leg_Curl'],
+['Peso muerto rumano','Pierna','Barra','Romanian_Deadlift'],
+['Zancadas con mancuernas','Pierna','Mancuernas','Dumbbell_Lunges'],
+['Sentadilla búlgara','Pierna','Mancuernas','Split_Squat_with_Dumbbells'],
+['Elevación de talones (pantorrilla)','Pierna','Máquina','Standing_Calf_Raises'],
+['Hip thrust con barra','Glúteo','Barra','Barbell_Hip_Thrust'],
+['Abductores en máquina','Glúteo','Máquina','Thigh_Abductor'],
+['Aductores en máquina','Glúteo','Máquina','Thigh_Adductor'],
+['Patada de glúteo en polea','Glúteo','Polea','One-Legged_Cable_Kickback'],
+['Crunch en polea','Abdomen','Polea','Cable_Crunch'],
+['Crunch en máquina','Abdomen','Máquina','Ab_Crunch_Machine'],
+['Elevación de piernas colgado','Abdomen','Peso corporal','Hanging_Leg_Raise',1]
+].map(([n,g,eq,img,bw])=>({n,g,eq,img,bw:!!bw}));
+const LIB_BY=Object.fromEntries(LIB.map(x=>[x.n,x]));
+const LGROUPS=['Pecho','Espalda','Hombro','Bíceps','Tríceps','Pierna','Glúteo','Abdomen'];
+const LEQUIP=['Máquina','Mancuernas','Barra','Polea','Peso corporal'];
+const exImg=(x,n)=>`ex/${x.img}-${n}.jpg`;
+// en ejercicios de peso corporal el campo kg es peso EXTRA; la carga real es tu peso + extra
+const isBW=ex=>!!(LIB_BY[ex] && LIB_BY[ex].bw);
+const setLoad=(ex,s)=> isBW(ex) ? (DB.profile.weight||70)+(+s.kg||0) : +s.kg;
+const validSet=(ex,s)=> s.reps>0 && (isBW(ex) ? true : s.kg>0);
+const fmtSet=(ex,s)=> isBW(ex) ? `${+s.kg ? '+'+r1(s.kg) : 'PC'}×${s.reps}` : `${r1(s.kg)}×${s.reps}`;
 // 1RM estimado con la fórmula de Epley
 const e1rm=(kg,reps)=> !(kg>0)||!(reps>0) ? 0 : reps===1 ? kg : kg*(1+reps/30);
-const sessBest=l=>Math.max(0,...l.sets.map(s=>e1rm(s.kg,s.reps)));
-const sessVol=l=>l.sets.reduce((a,s)=>a+(s.kg||0)*(s.reps||0),0);
+const sessBest=l=>Math.max(0,...l.sets.map(s=>e1rm(setLoad(l.ex,s),s.reps)));
+const sessVol=l=>l.sets.reduce((a,s)=>a+setLoad(l.ex,s)*(s.reps||0),0);
 const liftsOf=ex=>DB.lifts.filter(l=>l.ex===ex).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.id<b.id?-1:1));
 function isPR(l){
   const prev=liftsOf(l.ex).filter(x=>x.d<l.d||(x.d===l.d&&x.id<l.id));
   return prev.length>0 && sessBest(l)>Math.max(...prev.map(sessBest))+1e-9;
 }
-function liftNames(){ return [...new Set([...LIFT_PRESETS, ...DB.liftEx, ...DB.lifts.map(l=>l.ex)])]; }
+const myExNames=()=>[...new Set([...DB.liftEx, ...DB.lifts.map(l=>l.ex)])].filter(n=>!LIB_BY[n]);
+function liftNames(){ return [...LIB.map(x=>x.n), ...myExNames()]; }
 let liftSel=null, liftSets=[], editingLift=null;
 
+function liftOptions(){
+  let h='';
+  LGROUPS.forEach(g=>{
+    h+=`<optgroup label="${g}">`+LIB.filter(x=>x.g===g).map(x=>`<option value="${esc(x.n)}">${esc(x.n)}</option>`).join('')+'</optgroup>';
+  });
+  const mine=myExNames();
+  if(mine.length) h+='<optgroup label="Mis ejercicios">'+mine.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')+'</optgroup>';
+  return h+'<option value="__new">➕ Crear mi propio ejercicio…</option>';
+}
 function openLiftSheet(ex, editId){
   closeSheets(); openSheet('sheet-lift');
   editingLift=editId||null;
   const editL = editId ? DB.lifts.find(l=>l.id===editId) : null;
   const recent = DB.lifts.slice().sort((a,b)=>a.d<b.d?1:-1)[0];
-  const cur = editL ? editL.ex : (ex || liftSel || (recent ? recent.ex : LIFT_PRESETS[0]));
-  $('#lf-ex').innerHTML = liftNames().map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')
-    + '<option value="__new">➕ Otro ejercicio…</option>';
+  const cur = editL ? editL.ex : (ex || liftSel || (recent ? recent.ex : LIB[0].n));
+  $('#lf-ex').innerHTML=liftOptions();
   $('#lf-ex').value=cur;
-  $('#lf-newwrap').style.display='none'; $('#lf-new').value='';
+  $('#lf-newwrap').style.display = cur==='__new' ? 'block' : 'none'; $('#lf-new').value='';
   $('#lf-date').value = editL ? editL.d : dkey(today());
   $('#lift-title').textContent = editL ? 'Editar levantamiento' : 'Registrar levantamiento';
   if(editL) liftSets=editL.sets.map(s=>({...s})); else prefillSets(cur);
   renderSets();
+  if(cur==='__new') setTimeout(()=>$('#lf-new').focus(),350);
 }
 // se precargan las series de la última sesión de ese ejercicio para que solo ajustes
 function prefillSets(ex){
@@ -2071,31 +2267,41 @@ function prefillSets(ex){
 $('#lf-ex').addEventListener('change',()=>{
   const v=$('#lf-ex').value;
   $('#lf-newwrap').style.display = v==='__new' ? 'block' : 'none';
-  if(v!=='__new' && !editingLift){ prefillSets(v); renderSets(); } else updLiftLive();
+  if(v!=='__new' && !editingLift){ prefillSets(v); renderSets(); } else renderSets();
 });
 $('#lf-new').addEventListener('input',()=>updLiftLive());
+function renderLiftPrev(){
+  const x=LIB_BY[currentLiftEx()], el=$('#lf-prev');
+  if(!x){ el.style.display='none'; return; }
+  el.style.display='flex';
+  el.innerHTML=`<img src="${exImg(x,0)}" alt=""><img src="${exImg(x,1)}" alt="">
+    <div><b>${esc(x.g)} · ${esc(x.eq)}</b>${x.bw?'<small>Pon solo el peso extra (0 si es sin peso); se suma tu peso corporal.</small>':''}</div>`;
+}
 function renderSets(){
+  const bw=isBW(currentLiftEx());
+  $('#lf-kghead').textContent = bw ? 'Kg extra' : 'Kg';
   $('#lf-sets').innerHTML=liftSets.map((s,i)=>`<div class="setrow">
       <span class="sn">${i+1}</span>
-      <input type="number" inputmode="decimal" step="0.5" placeholder="kg" value="${s.kg}" data-i="${i}" data-f="kg">
+      <input type="number" inputmode="decimal" step="0.5" placeholder="${bw?'0':'kg'}" value="${s.kg}" data-i="${i}" data-f="kg">
       <input type="number" inputmode="numeric" placeholder="reps" value="${s.reps}" data-i="${i}" data-f="reps">
       <button class="ldel" onclick="delSet(${i})" ${liftSets.length<2?'style="visibility:hidden"':''}>✕</button>
     </div>`).join('');
   document.querySelectorAll('#lf-sets input').forEach(inp=>inp.addEventListener('input',()=>{
     const v=parseFloat(inp.value); liftSets[+inp.dataset.i][inp.dataset.f]=isNaN(v)?'':v; updLiftLive();
   }));
-  updLiftLive();
+  renderLiftPrev(); updLiftLive();
 }
 function addSet(){ const l=liftSets[liftSets.length-1]||{kg:'',reps:''}; liftSets.push({...l}); renderSets(); }
 function delSet(i){ liftSets.splice(i,1); renderSets(); }
 function currentLiftEx(){ const v=$('#lf-ex').value; return v==='__new' ? $('#lf-new').value.trim() : v; }
 function updLiftLive(){
-  const valid=liftSets.filter(s=>s.kg>0&&s.reps>0);
-  if(!valid.length){ $('#lf-live').textContent='Escribe los kg y las repeticiones de cada serie.'; return; }
-  const best=Math.max(...valid.map(s=>e1rm(s.kg,s.reps))), vol=valid.reduce((a,s)=>a+s.kg*s.reps,0);
-  const prev=liftsOf(currentLiftEx()).filter(l=>l.id!==editingLift);
+  const ex=currentLiftEx(), valid=liftSets.filter(s=>validSet(ex,s));
+  if(!valid.length){ $('#lf-live').textContent = isBW(ex) ? 'Escribe las repeticiones de cada serie.' : 'Escribe los kg y las repeticiones de cada serie.'; return; }
+  const best=Math.max(...valid.map(s=>e1rm(setLoad(ex,s),s.reps))), vol=valid.reduce((a,s)=>a+setLoad(ex,s)*s.reps,0);
+  const prev=liftsOf(ex).filter(l=>l.id!==editingLift);
   const prevBest=prev.length ? Math.max(...prev.map(sessBest)) : null;
   $('#lf-live').innerHTML=`1RM estimado: <b>${r1(best)} kg</b> · Volumen: <b>${fmt(vol)} kg</b>`
+    + (isBW(ex) ? `<br><small>Con tu peso corporal de ${r1(DB.profile.weight||70)} kg</small>` : '')
     + (prevBest==null ? '' : best>prevBest+1e-9
         ? `<br><span class="pr">🏆 ¡Nuevo récord! Antes: ${r1(prevBest)} kg</span>`
         : `<br>Tu récord: ${r1(prevBest)} kg`);
@@ -2104,14 +2310,39 @@ function saveLift(){
   const ex=currentLiftEx(), d=$('#lf-date').value, wasEdit=!!editingLift;
   if(!ex){ toast('Escribe el nombre del ejercicio'); return; }
   if(!d){ toast('Pon la fecha'); return; }
-  const sets=liftSets.filter(s=>s.kg>0&&s.reps>0).map(s=>({kg:+s.kg, reps:Math.round(+s.reps)}));
-  if(!sets.length){ toast('Agrega al menos una serie con kg y reps'); return; }
-  if(!liftNames().includes(ex)) DB.liftEx.push(ex);
+  const sets=liftSets.filter(s=>validSet(ex,s)).map(s=>({kg:+s.kg||0, reps:Math.round(+s.reps)}));
+  if(!sets.length){ toast(isBW(ex) ? 'Agrega al menos una serie con reps' : 'Agrega al menos una serie con kg y reps'); return; }
+  if(!LIB_BY[ex] && !DB.liftEx.includes(ex)) DB.liftEx.push(ex);
   let rec;
   if(wasEdit){ rec=DB.lifts.find(l=>l.id===editingLift); Object.assign(rec,{ex,d,sets}); }
   else{ rec={id:'l'+Date.now(), ex, d, sets}; DB.lifts.push(rec); }
   liftSel=ex; save(); closeSheets(); renderAll();
   toast(isPR(rec) ? `🏆 ¡Récord en ${ex}!` : wasEdit ? 'Levantamiento actualizado ✓' : 'Levantamiento guardado 🏋️');
+}
+
+/* ---- biblioteca con fotos ---- */
+let libGroup='Todos', libEquip='Todos';
+function renderLibrary(){
+  const chip=(v,cur,attr)=>`<button class="chip2 ${v===cur?'on':''}" data-${attr}="${esc(v)}">${esc(v)}</button>`;
+  $('#libgroups').innerHTML=['Todos',...LGROUPS].map(g=>chip(g,libGroup,'g')).join('');
+  $('#libequip').innerHTML=['Todos',...LEQUIP].map(e=>chip(e,libEquip,'e')).join('');
+  document.querySelectorAll('#libgroups .chip2').forEach(b=>b.addEventListener('click',()=>{ libGroup=b.dataset.g; renderLibrary(); }));
+  document.querySelectorAll('#libequip .chip2').forEach(b=>b.addEventListener('click',()=>{ libEquip=b.dataset.e; renderLibrary(); }));
+  const list=LIB.filter(x=>(libGroup==='Todos'||x.g===libGroup)&&(libEquip==='Todos'||x.eq===libEquip));
+  $('#libgrid').innerHTML = list.length ? list.map(x=>`<button class="libcard" data-n="${esc(x.n)}">
+      <img src="${exImg(x,0)}" alt="" loading="lazy">
+      <div class="lbn">${esc(x.n)}</div><div class="lbs">${esc(x.g)} · ${esc(x.eq)}</div></button>`).join('')
+    : '<div class="emptylog" style="grid-column:1/-1">No hay ejercicios con ese filtro.</div>';
+  document.querySelectorAll('#libgrid .libcard').forEach(b=>b.addEventListener('click',()=>openExInfo(b.dataset.n)));
+}
+function openExInfo(n){
+  const x=LIB_BY[n]; if(!x) return;
+  closeSheets(); openSheet('sheet-exinfo');
+  const S=liftsOf(n), best=S.length ? Math.max(...S.map(sessBest)) : null;
+  $('#xi-name').textContent=x.n;
+  $('#xi-tags').innerHTML=`<span class="badge">${esc(x.g)}</span><span class="badge">${esc(x.eq)}</span>`+(best?`<span class="badge green">Tu mejor 1RM: ${r1(best)} kg</span>`:'');
+  $('#xi-imgs').innerHTML=`<figure><img src="${exImg(x,0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${exImg(x,1)}" alt=""><figcaption>Final</figcaption></figure>`;
+  $('#xi-go').onclick=()=>openLiftSheet(n);
 }
 function delLift(id){
   const l=DB.lifts.find(x=>x.id===id); if(!l) return;
@@ -2129,6 +2360,7 @@ function renderStrength(){
   $('#liftmain').style.display = used.length ? 'block' : 'none';
   $('#liftempty').style.display = used.length ? 'none' : 'block';
   $('#exgridtitle').style.display = used.length ? 'block' : 'none';
+  renderLibrary();
   if(!used.length){ $('#exgrid').innerHTML=''; return; }
   // por default: el ejercicio más reciente que ya tenga al menos 2 sesiones (para que haya línea)
   if(!used.includes(liftSel)) liftSel = used.find(n=>liftsOf(n).length>1) || used[0];
@@ -2144,10 +2376,10 @@ function renderStrength(){
   if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra otra sesión de este ejercicio para ver tu línea de progreso 📈</div>';
   else drawChart($('#lchart'),[{data:bests.map(r1),color:'#c8f560',fill:true}], S.map(l=>shortDate(l.d)),
     {h:160, straight:true, dots:true, dec:true,
-     tip:i=>`<b>${r1(bests[i])} kg</b> 1RM est.<br><small>${shortDate(S[i].d)} · ${S[i].sets.map(s=>r1(s.kg)+'×'+s.reps).join(', ')}</small>`});
+     tip:i=>`<b>${r1(bests[i])} kg</b> 1RM est.<br><small>${shortDate(S[i].d)} · ${S[i].sets.map(s=>fmtSet(S[i].ex,s)).join(', ')}</small>`});
   $('#lhist').innerHTML=S.slice().reverse().map(l=>`<div class="hrow tap" onclick="openLiftSheet(null,'${l.id}')">
       <div class="hd">${shortDate(l.d)}</div>
-      <div class="hi">${l.sets.map(s=>`${r1(s.kg)}×${s.reps}`).join(' · ')}${isPR(l)?'<span class="prtag">🏆 PR</span>':''}
+      <div class="hi">${l.sets.map(s=>fmtSet(l.ex,s)).join(' · ')}${isPR(l)?'<span class="prtag">🏆 PR</span>':''}
         <small>Volumen ${fmt(sessVol(l))} kg · 1RM est. ${r1(sessBest(l))} kg</small></div>
       <button class="ldel" onclick="event.stopPropagation();delLift('${l.id}')">✕</button></div>`).join('');
 
@@ -2170,6 +2402,9 @@ function renderSettings(){
   $('#s-cal').value=DB.goals.cal; $('#s-p').value=DB.goals.p;
   $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f; $('#s-burn').value=DB.goals.burn;
   $('#s-w').value=DB.profile.weight??''; $('#s-wt').value=DB.profile.target??'';
+  $('#s-age').value=DB.profile.age??''; $('#s-h').value=DB.profile.height??'';
+  $('#s-steps').value=DB.profile.steps??10000; $('#s-sleep').value=DB.profile.sleepH??7.5;
+  document.querySelectorAll('#s-sex button').forEach(b=>b.classList.toggle('on',b.dataset.v===(DB.profile.sex||'m')));
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
   updMacHint();
   renderInstall();
@@ -2223,6 +2458,12 @@ function saveProfile(){
   const w=parseFloat($('#s-w').value), wt=parseFloat($('#s-wt').value);
   DB.profile.weight = isNaN(w)?DB.profile.weight:w;
   DB.profile.target = isNaN(wt)?DB.profile.target:wt;
+  const inRange=(id,lo,hi)=>{ const v=parseFloat($('#'+id).value); return v>=lo && v<=hi ? v : null; };
+  const age=inRange('s-age',10,100), h=inRange('s-h',100,250), st=inRange('s-steps',0,60000), sl=inRange('s-sleep',3,12);
+  if(age!=null) DB.profile.age=age;
+  if(h!=null) DB.profile.height=h;
+  if(st!=null) DB.profile.steps=Math.round(st);
+  if(sl!=null) DB.profile.sleepH=sl;
   save(); renderAll(); toast('Perfil guardado');
 }
 function toggleExAdd(){
@@ -2250,7 +2491,11 @@ $('#s-burn').addEventListener('change',()=>{
   else renderSettings();
 });
 ['s-cal','s-p','s-c','s-f'].forEach(id=>$('#'+id).addEventListener('input',updMacHint));
-['s-w','s-wt'].forEach(id=>$('#'+id).addEventListener('change',()=>saveProfile()));
+['s-w','s-wt','s-age','s-h','s-steps','s-sleep'].forEach(id=>$('#'+id).addEventListener('change',()=>saveProfile()));
+$('#s-sex').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  DB.profile.sex=b.dataset.v; save(); renderSettings(); renderHome(); toast('Perfil guardado');
+});
 function resetAll(){
   if(!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
   localStorage.removeItem(LSKEY);
