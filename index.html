@@ -117,6 +117,11 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .seg.period button{padding:10px 2px;font-size:13.5px;font-weight:600;border-radius:12px}
 
 /* peso */
+.wseg{margin-top:12px}
+.wseg button{padding:8px 2px;font-size:12.5px}
+.wrate{font-size:12.5px;color:var(--mut);font-weight:500;margin-top:8px}
+.wrate b{color:var(--txt);font-weight:700}
+.wrate b.good{color:var(--lime)} .wrate b.bad{color:var(--coral)}
 .wgoalrow{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--mut);font-weight:500;margin:14px 2px 8px}
 .wgoalrow b{color:var(--txt);font-weight:700}
 .wbar{height:6px;border-radius:99px;background:var(--card2);margin:0 2px 14px;overflow:hidden}
@@ -495,10 +500,17 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 
     <div class="card">
       <div class="kpihead">
-        <div><div class="klab">Tendencia de peso</div><div class="kval"><span id="wavg">—</span> <small id="wavglab">kg prom</small></div></div>
-        <div class="kdelta"><span class="dbadge" id="wdelta">—</span><small id="wdeltalab">vs semana pasada</small></div>
+        <div><div class="klab">Tendencia de peso</div><div class="kval"><span id="wavg">—</span> <small>kg · tendencia</small></div></div>
+        <div class="kdelta"><span class="dbadge" id="wdelta">—</span><small id="wdeltalab"></small></div>
       </div>
       <div class="chart" id="wchart"></div>
+      <div class="legend">
+        <span><i style="background:#ffffff80"></i>Pesajes</span>
+        <span><i style="background:var(--lime)"></i>Tendencia</span>
+        <span id="wleg-goal"><i class="dash" style="border-color:var(--amber)"></i>Meta</span>
+      </div>
+      <div class="wrate" id="wrate"></div>
+      <div class="seg wseg" id="wrange"><button data-r="30">Mes</button><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="0" class="on">Todo</button></div>
       <div class="wgoalrow">
         <span>Actual <b id="pw">—</b> kg · Meta <b id="pwgoal">—</b> kg</span>
         <span class="badge green" id="wgoalbadge" style="display:none">⚑ 0%</span>
@@ -1694,6 +1706,8 @@ function smoothPath(pts){
 function drawChart(host, series, xlabels, opts={}){
   const W=host.clientWidth||340, H=opts.h||190;
   const all=series.flatMap(s=>s.data).filter(v=>v!=null && isFinite(v));
+  const hl=(opts.hlines||[]).filter(h=>h.v!=null && isFinite(h.v));
+  if(all.length) hl.forEach(h=>all.push(h.v));
   if(!all.length || xlabels.length===0){
     host.innerHTML=`<div class="empty">${opts.empty||'Sin datos todavía'}</div>`; return;
   }
@@ -1703,7 +1717,9 @@ function drawChart(host, series, xlabels, opts={}){
   if(opts.zeroMin) min=0;
   const padL=10,padR=40,padT=12,padB=24;
   const n=xlabels.length;
-  const X=i=> padL+(W-padL-padR)*(n===1?0.5:i/(n-1));
+  const xv=opts.xv, x0=xv?Math.min(...xv):0, x1=xv?Math.max(...xv):0;
+  const X=i=> xv ? padL+(W-padL-padR)*(x1===x0?0.5:(xv[i]-x0)/(x1-x0))
+                 : padL+(W-padL-padR)*(n===1?0.5:i/(n-1));
   const Y=v=> padT+(H-padT-padB)*(1-(v-min)/(max-min));
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
   // grid + labels Y
@@ -1717,6 +1733,11 @@ function drawChart(host, series, xlabels, opts={}){
   for(let i=0;i<n;i+=step){
     svg+=`<text x="${X(i)}" y="${H-7}" font-size="10" font-weight="500" fill="#5b5b63" text-anchor="middle">${xlabels[i]}</text>`;
   }
+  hl.forEach(h=>{
+    const y=Y(h.v), c=h.color||'#f7b733';
+    svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${c}" stroke-opacity=".7" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+    if(h.label) svg+=`<text x="${padL+2}" y="${y-5}" font-size="10" font-weight="600" fill="${c}">${h.label}</text>`;
+  });
   // series
   series.forEach((s,si)=>{
     const pts=s.data.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
@@ -1727,10 +1748,13 @@ function drawChart(host, series, xlabels, opts={}){
       svg+=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".22"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>`;
       svg+=`<path d="${path} L${pts[pts.length-1][0]},${H-padB} L${pts[0][0]},${H-padB} Z" fill="url(#${gid})"/>`;
     }
-    if(path) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
-    if(opts.dots || pts.length===1) pts.forEach((p,i)=>{
+    if(path && s.line!==false) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
+    const dots = s.dots ?? (opts.dots ? 'all' : false);
+    if(dots || pts.length===1) pts.forEach((p,i)=>{
       const last=i===pts.length-1;
-      svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="${last?5:3.6}" fill="${s.color}" stroke="#111114" stroke-width="2"${last?` style="filter:drop-shadow(0 0 6px ${s.color})"`:''}/>`;
+      if(dots==='last' && !last && pts.length>1) return;
+      const glow = last && s.op==null;
+      svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="${s.r ?? (last?5:3.6)}" fill="${s.color}" stroke="#111114" stroke-width="${s.r?1.2:2}"${s.op!=null?` opacity="${s.op}"`:''}${glow?` style="filter:drop-shadow(0 0 6px ${s.color})"`:''}/>`;
     });
   });
   svg+=`<line id="guide" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="#ffffff44" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>`;
@@ -1961,10 +1985,32 @@ function drawBars(host, vals, labels, opts={}){
     tip.style.display='none'; svgEl.querySelectorAll('.bar').forEach(b=>b.style.opacity=1); });
 }
 
-function renderWeight(n){
+// Tendencia: regresión lineal local de las últimas 3 semanas (21 días) en cada pesaje.
+// Filtra el ruido de agua/sal sin el retraso de un promedio móvil, y detecta estancamientos sin
+// "seguir bajando por inercia" (probado contra EMA y Holt: el más parejo en bajada, meseta y pesaje semanal).
+function weightTrend(){
+  const W=DB.weights.map(x=>({d:x.d, kg:x.kg, t:fromKey(x.d).getTime()/86400000}));
+  return W.map(p=>{
+    const pts=W.filter(q=>q.t>p.t-21 && q.t<=p.t), n=pts.length;
+    const my=pts.reduce((a,q)=>a+q.kg,0)/n;
+    if(n<3) return {d:p.d, kg:p.kg, tr:my, slope:null, span:0};
+    const mx=pts.reduce((a,q)=>a+q.t,0)/n; let sxy=0, sxx=0;
+    pts.forEach(q=>{ sxy+=(q.t-mx)*(q.kg-my); sxx+=(q.t-mx)**2; });
+    const m = sxx ? sxy/sxx : 0;
+    return {d:p.d, kg:p.kg, tr:my+m*(p.t-mx), slope:m, span:pts[n-1].t-pts[0].t};
+  });
+}
+let wRange=0;
+$('#wrange').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  wRange=+b.dataset.r;
+  document.querySelectorAll('#wrange button').forEach(x=>x.classList.toggle('on',x===b));
+  renderWeight();
+});
+function renderWeight(){
   const w=DB.profile.weight, wt=DB.profile.target;
-  $('#pw').textContent = w!=null ? (Math.round(w*10)/10) : '—';
-  $('#pwgoal').textContent = wt!=null ? (Math.round(wt*10)/10) : '—';
+  $('#pw').textContent = w!=null ? r1(w) : '—';
+  $('#pwgoal').textContent = wt!=null ? r1(wt) : '—';
   let pct=0;
   if(w!=null && wt!=null && DB.weights.length){
     const start=DB.weights[0].kg;
@@ -1974,29 +2020,44 @@ function renderWeight(n){
   const badge=$('#wgoalbadge');
   if(w!=null && wt!=null && DB.weights.length){ badge.style.display='inline-block'; badge.textContent=`⚑ ${pct}% de la meta`; }
   else badge.style.display='none';
+  $('#wleg-goal').style.display = wt!=null ? '' : 'none';
 
-  // si en el periodo hay menos de 2 pesajes, se muestran los últimos para que la línea no quede vacía
-  const lim=new Date(today()); lim.setDate(lim.getDate()-n+1); const limk=dkey(lim);
-  let ws=DB.weights.filter(x=>x.d>=limk), fallback=false;
-  if(ws.length<2 && DB.weights.length>=2){ ws=DB.weights.slice(-8); fallback=true; }
-  $('#wavg').textContent = ws.length ? Math.round(ws.reduce((s,x)=>s+x.kg,0)/ws.length*10)/10 : '—';
-  $('#wavglab').textContent = fallback ? 'kg prom · últimos pesajes' : 'kg prom';
-  const before=DB.weights.filter(x=>x.d<ws[0]?.d);
-  const ref = !ws.length ? null : (!fallback && before.length) ? before[before.length-1].kg : (ws.length>1 ? ws[0].kg : null);
-  const diff = ref==null ? null : Math.round((ws[ws.length-1].kg-ref)*10)/10;
-  $('#wdeltalab').textContent = (fallback || !before.length) && ws.length ? `desde el ${shortDate(ws[0].d)}` : PERIOD_LAB[n];
-  const downIsGood = (wt!=null && w!=null) ? wt<w : wantsDown();
-  setDelta($('#wdelta'), diff, diff==null?'':`${Math.abs(diff)} kg`, downIsGood);
-
+  let ws=weightTrend();
+  if(wRange>0){ const lim=new Date(today()); lim.setDate(lim.getDate()-wRange+1); const limk=dkey(lim); ws=ws.filter(x=>x.d>=limk); }
   const host=$('#wchart');
-  if(ws.length<2){
-    host.innerHTML=`<div class="empty">${DB.weights.length===1?'Registra tu peso otra vez para ver la línea 📈':'Registra tu peso para ver tu tendencia ⚖️'}</div>`;
+  if(!ws.length){
+    $('#wavg').textContent='—'; setDelta($('#wdelta'),null); $('#wdeltalab').textContent=''; $('#wrate').textContent='';
+    host.innerHTML=`<div class="empty">${DB.weights.length ? 'Sin pesajes en este periodo. Prueba con "Todo".' : 'Registra tu peso para ver tu tendencia ⚖️'}</div>`;
     return;
   }
-  const labels=ws.map(x=>{ const d=fromKey(x.d); return (n===7&&!fallback) ? DLET[d.getDay()] : d.getDate()+' '+MESES[d.getMonth()]; });
-  drawChart(host,[{data:ws.map(x=>x.kg),color:'#c8f560',fill:true}],labels,{
-    h:165, straight:true, dots:true, dec:true,
-    tip:i=>`<b>${ws[i].kg} kg</b><br><small>${shortDate(ws[i].d)}</small>`
+  const first=ws[0], last=ws[ws.length-1], downIsGood=(wt!=null && w!=null) ? wt<w : wantsDown();
+  $('#wavg').textContent=last.tr.toFixed(1);
+  const diff = ws.length>1 ? r1(last.tr-first.tr) : null;
+  setDelta($('#wdelta'), diff, diff==null?'':`${Math.abs(diff)} kg`, downIsGood);
+  $('#wdeltalab').textContent = ws.length>1 ? `desde el ${shortDate(first.d)}` : 'primer pesaje';
+  // ritmo ACTUAL: pendiente de las últimas 4 semanas (probado: error ~0.06 kg/sem y detecta un
+  // estancamiento en ~2 semanas; con 3 semanas el ruido lo movía demasiado)
+  const lt=fromKey(last.d).getTime()/86400000;
+  const rp=DB.weights.map(x=>({t:fromKey(x.d).getTime()/86400000, kg:x.kg})).filter(q=>q.t>lt-28);
+  let perWeek=null;
+  if(rp.length>=3 && rp[rp.length-1].t-rp[0].t>=7){
+    const mx=rp.reduce((a,q)=>a+q.t,0)/rp.length, my=rp.reduce((a,q)=>a+q.kg,0)/rp.length;
+    let sxy=0,sxx=0; rp.forEach(q=>{ sxy+=(q.t-mx)*(q.kg-my); sxx+=(q.t-mx)**2; });
+    perWeek = sxx ? sxy/sxx*7 : null;
+  }
+  $('#wrate').innerHTML = perWeek==null
+    ? 'Pésate varias veces durante al menos una semana para calcular tu ritmo.'
+    : Math.abs(perWeek)<0.05
+      ? 'Ritmo actual: <b>estable</b> (últimas 4 semanas)'
+      : `Ritmo actual: <b class="${(perWeek<0)===downIsGood?'good':'bad'}">${perWeek<0?'↓':'↑'} ${Math.abs(Math.round(perWeek*100)/100)} kg por semana</b> (últimas 4 semanas)`;
+  if(ws.length<2){ host.innerHTML='<div class="empty">Registra tu peso otro día para ver la línea 📈</div>'; return; }
+  drawChart(host,[
+    {data:ws.map(x=>x.kg), color:'#ffffff', line:false, dots:'all', r:3, op:.45},
+    {data:ws.map(x=>r1(x.tr)), color:'#c8f560', fill:true, dots:'last'}
+  ], ws.map(x=>shortDate(x.d)), {
+    h:185, dec:true, xv:ws.map(x=>fromKey(x.d).getTime()/86400000),
+    hlines: wt!=null ? [{v:wt, label:`Meta ${r1(wt)} kg`, color:'#f7b733'}] : [],
+    tip:i=>`<b>${r1(ws[i].tr)} kg</b> tendencia<br>${ws[i].kg} kg pesaje<br><small>${shortDate(ws[i].d)}</small>`
   });
 }
 
