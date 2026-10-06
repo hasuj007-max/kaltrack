@@ -290,19 +290,6 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .ginput{width:104px;background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:6px 8px;color:var(--txt);font:inherit;font-size:24px;font-weight:700;text-align:center;outline:none;-moz-appearance:textfield}
 .ginput:focus{border-color:#c8f56066}
 .ginput::-webkit-outer-spin-button,.ginput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.nutmini span{color:var(--mut);font-weight:500;font-size:11px}
-.nutmini b{color:var(--txt);font-size:14px}
-.nrow{margin-bottom:13px}
-.nrow:last-child{margin-bottom:0}
-.nhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;margin-bottom:6px}
-.nval{font-size:12px;color:var(--mut);font-weight:500;font-variant-numeric:tabular-nums}
-.nval b{color:var(--txt);font-weight:700}
-.nval.ok b{color:var(--lime)} .nval.warn b{color:var(--amber)} .nval.bad b{color:var(--coral)}
-.nbar{height:6px;border-radius:99px;background:var(--card2);overflow:hidden}
-.nbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#2aa395,var(--cyan));transition:width .8s ease}
-.nbar i.fib{background:linear-gradient(90deg,var(--limed),var(--lime))}
-.nbar i.warn{background:linear-gradient(90deg,#c98a1d,var(--amber))}
-.nbar i.bad{background:linear-gradient(90deg,#e0573a,var(--coral))}
 .backlink{border:none;background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:4px 0;margin-bottom:8px;text-align:left}
 
 .fmenu{display:flex;flex-direction:column;gap:9px}
@@ -428,10 +415,6 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
     <button class="duebanner" id="hduebanner" style="display:none" onclick="goScreen('body')"><span id="hduetxt">📏 Te toca registrar tus medidas de la semana</span><b>→</b></button>
     <div class="macros" id="macros"></div>
 
-    <div class="card">
-      <div class="cardhead"><h3>Nutrientes</h3><span class="badge" id="nutbadge">—</span></div>
-      <div id="nutrows"></div>
-    </div>
 
     <div class="card">
       <div class="cardhead"><h3 id="logtitle">Registros de hoy</h3>
@@ -614,11 +597,6 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       </div>
       <div class="machint" id="machint"></div>
       <div class="field"><label>Meta de ejercicio (kcal quemadas al día)</label><input type="number" inputmode="numeric" id="s-burn"></div>
-      <div class="fgrid3">
-        <div class="field"><label>Fibra mín. (g)</label><input type="number" inputmode="numeric" id="s-fib"></div>
-        <div class="field"><label>Azúcar máx. (g)</label><input type="number" inputmode="numeric" id="s-sug"></div>
-        <div class="field"><label>Sodio máx. (mg)</label><input type="number" inputmode="numeric" id="s-sod"></div>
-      </div>
       <div class="togglerow">
         <div><b>Sumar ejercicio a restantes</b><small>Si quemas 300 kcal, tus calorías disponibles del día suben 300</small></div>
         <button class="tgl" id="extoggle" onclick="toggleExAdd()"></button>
@@ -729,10 +707,6 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
           <span style="color:var(--orange)"><b id="fd-c">0g</b>Carbs</span>
           <span style="color:var(--coral)"><b id="fd-f">0g</b>Grasa</span>
         </div>
-        <div class="macromini nutmini">
-          <span><b id="fd-fib">—</b>Fibra</span><span><b id="fd-sug">—</b>Azúcar</span>
-          <span><b id="fd-sod">—</b>Sodio</span><span><b id="fd-sat">—</b>G. sat.</span>
-        </div>
         <button class="btn" style="margin-top:12px" id="fd-confirm" onclick="confirmFood()">Agregar al registro</button>
       </div>
       <div id="food-create" style="display:none">
@@ -746,14 +720,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
           <div class="field"><label>Carbos (g)</label><input type="number" inputmode="decimal" id="cf-c"></div>
           <div class="field"><label>Grasa (g)</label><input type="number" inputmode="decimal" id="cf-f"></div>
         </div>
-        <div class="catlab" style="margin-top:4px">Opcional · para contar en gramos y nutrientes</div>
-        <div class="fgrid">
-          <div class="field"><label>Gramos por porción</label><input type="number" inputmode="decimal" id="cf-g" placeholder="Ej. 250"></div>
-          <div class="field"><label>Fibra (g)</label><input type="number" inputmode="decimal" id="cf-fib"></div>
-          <div class="field"><label>Azúcar (g)</label><input type="number" inputmode="decimal" id="cf-sug"></div>
-          <div class="field"><label>Sodio (mg)</label><input type="number" inputmode="decimal" id="cf-sod"></div>
-          <div class="field"><label>Grasa saturada (g)</label><input type="number" inputmode="decimal" id="cf-sat"></div>
-        </div>
+        <div class="catlab" style="margin-top:4px">Opcional · para registrarlo por gramos</div>
+        <div class="field"><label>Gramos por porción</label><input type="number" inputmode="decimal" id="cf-g" placeholder="Ej. 250"></div>
         <button class="btn" onclick="saveCustomFood()" id="cf-save">Guardar alimento</button>
       </div>
     </div>
@@ -964,58 +932,38 @@ const RAW = [
 ['Sandwich jamón y queso','1 pieza',350,18,33,16],['Enchiladas','2 piezas',320,14,28,17],
 ['Chilaquiles','1 plato',380,12,40,19],['Ceviche','1 taza',120,18,8,2]]]
 ];
-// Por porción: [gramos (o ml en bebidas), fibra g, azúcar g, sodio mg, grasa saturada g]
-// Valores de referencia promedio (tipo USDA). En productos empaquetados manda la etiqueta.
-const EXTRA = {
-'Pechuga de pollo':[100,0,0,74,1],'Muslo de pollo':[100,0,0,84,3],'Carne de res magra':[100,0,0,72,6],
-'Carne molida 80/20':[100,0,0,66,7.6],'Bistec de res':[100,0,0,60,7],'Lomo de cerdo':[100,0,0,55,2],
-'Chuleta de cerdo':[100,0,0,62,5],'Pavo molido':[100,0,0,70,2.5],'Salmón':[100,0,0,59,3.1],
-'Atún en agua (lata)':[100,0,0,247,0.3],'Atún fresco':[100,0,0,45,1.3],'Tilapia':[100,0,0,52,0.6],
-'Camarones':[100,0,0,111,0.1],'Sardinas (lata)':[100,0,0,307,1.5],'Huevo entero':[50,0,0.2,71,1.6],
-'Clara de huevo':[33,0,0.2,55,0],'Jamón de pavo':[56,0,1,500,0.5],'Tocino':[16,0,0,320,2.4],
-'Chorizo':[50,0,0.5,620,7],'Tofu':[100,0.3,0.6,7,0.7],
-'Arroz blanco cocido':[158,0.6,0.1,2,0.1],'Arroz integral cocido':[195,3.5,0.7,10,0.4],'Pasta cocida':[140,2.5,0.8,1,0.3],
-'Pan blanco':[28,0.7,1.5,135,0.2],'Pan integral':[32,2,1.5,140,0.2],'Tortilla de maíz':[26,1.5,0.2,3,0.1],
-'Tortilla de harina':[45,1,1,330,1],'Avena cruda':[40,4,0.4,2,0.5],'Papa cocida':[173,3.8,1.5,10,0.1],
-'Camote':[130,3.9,5.4,72,0],'Quinoa cocida':[185,5.2,1.6,13,0.4],'Frijoles cocidos':[172,15,0.6,2,0.2],
-'Lentejas cocidas':[198,15.6,3.6,4,0.1],'Garbanzos cocidos':[164,12.5,7.9,11,0.4],'Elote':[103,2.4,6.4,15,0.2],
-'Cereal de maíz':[28,0.8,3.3,200,0.1],'Granola':[50,3.5,12,15,1.5],'Bagel':[95,2,5,430,0.3],'Arepa':[100,2.5,0.5,300,1],
-'Manzana':[182,4.4,19,2,0.1],'Plátano':[118,3.1,14,1,0.1],'Naranja':[131,3.1,12,0,0],'Fresas':[152,3,7.4,2,0],
-'Uvas':[151,1.4,23,3,0.1],'Sandía':[152,0.6,9.4,2,0],'Melón':[160,1.4,12.5,26,0],'Piña':[165,2.3,16,2,0],
-'Mango':[165,2.6,22.5,2,0.1],'Papaya':[145,2.5,8,12,0],'Pera':[178,5.5,17,2,0],'Durazno':[150,2.3,12.6,0,0],
-'Kiwi':[69,2.1,6.2,2,0],'Aguacate':[75,5,0.5,5,1.6],'Arándanos':[148,3.6,14.7,1,0],'Cerezas':[138,2.9,17.7,0,0.1],
-'Coco rallado':[30,2.7,1.9,6,8.4],
-'Brócoli':[91,2.4,1.5,30,0],'Espinaca':[30,0.7,0.1,24,0],'Lechuga':[36,0.5,0.4,10,0],'Tomate':[123,1.5,3.2,6,0],
-'Zanahoria':[61,1.7,2.9,42,0],'Pepino':[52,0.3,0.9,1,0],'Pimiento':[119,2.1,2.9,4,0],'Cebolla':[80,1.4,3.4,3,0],
-'Calabacín':[124,1.2,3.1,10,0.1],'Coliflor':[107,2.1,2,32,0.1],'Champiñones':[70,0.7,1.4,4,0],'Ejotes':[100,2.7,3.3,6,0],
-'Apio':[40,0.6,0.5,32,0],'Betabel':[85,1.7,6.8,65,0],'Espárragos':[90,1.9,1.7,2,0],
-'Leche entera':[244,0,12,105,4.6],'Leche descremada':[245,0,12,103,0.1],'Leche de almendra':[240,0.5,2,170,0.2],
-'Yogur natural':[245,0,11,113,5.1],'Yogur griego':[170,0,6,61,0.2],'Queso fresco':[50,0,1.5,350,6.5],
-'Queso cheddar':[30,0,0.1,185,5.7],'Queso Oaxaca':[30,0,0.5,190,5],'Queso cottage':[113,0,3.4,410,2],
-'Queso crema':[29,0,1.1,90,5.7],'Crema':[30,0,1,10,6.4],'Mantequilla':[14,0,0,91,7.3],'Helado de vainilla':[66,0.5,14,53,4.5],
-'Papas fritas (bolsa)':[40,1.8,0.2,210,1.5],'Galletas María':[21,0.5,5,70,1],'Galleta choco chip':[16,0.4,5.5,55,1.6],
-'Chocolate con leche':[40,1.4,21,32,7.4],'Chocolate oscuro 70%':[30,3.3,7,6,7],'Palomitas naturales':[16,2.3,0.1,1,0.1],
-'Almendras':[30,3.5,1.3,0,1.1],'Nueces':[30,2,0.8,1,1.8],'Cacahuates':[30,2.6,1.2,5,2],'Crema de cacahuate':[32,1.9,3,147,3.3],
-'Barra de granola':[28,1.3,7,80,1.5],'Barra de proteína':[60,5,6,200,3],'Hummus':[30,1.8,0.1,115,0.7],'Totopos':[30,1.4,0.3,120,1],
-'Dona glaseada':[60,0.8,12,250,7],'Pastel de chocolate':[95,2,35,300,5.5],'Pan dulce':[80,1,15,200,4],'Gomitas':[30,0,14,10,0],
-'Refresco de cola':[355,0,39,45,0],'Refresco light':[355,0,0,40,0],'Jugo de naranja':[248,0.5,21,2,0.1],'Cerveza':[355,0,0,14,0],
-'Cerveza light':[355,0,0.3,14,0],'Vino tinto':[150,0,0.9,6,0],'Tequila':[45,0,0,0,0],'Café negro':[240,0,0,5,0],
-'Café con leche':[240,0,6,60,2.3],'Capuchino':[240,0,6,60,2.3],'Té verde':[240,0,0,2,0],'Bebida deportiva':[355,0,21,160,0],
-'Bebida energética':[250,0,27,105,0],'Licuado de plátano':[300,2.5,30,110,2.3],'Proteína en polvo':[32,0.5,1.5,130,0.5],
-'Leche con chocolate':[250,1.8,24,150,5],'Smoothie de fresa':[300,3,30,40,0.5],'Agua':[250,0,0,0,0],
-'Pizza':[107,2.5,3.8,640,4.8],'Hamburguesa sencilla':[150,1.5,6,500,6],'Hamburguesa con queso':[190,1.8,7,850,10],
-'Hot dog':[98,1,4,750,6],'Taco de carne':[85,1.5,1,300,3.5],'Taco al pastor':[85,1.5,2,320,3],'Quesadilla':[110,1.5,1,550,8],
-'Burrito':[250,7,3,1100,7],'Torta':[280,4,6,1200,8],'Tamal':[140,3,2,600,5],'Pozole':[400,4,3,1200,2.5],
-'Sopa de pollo':[245,0.7,0.8,860,0.6],'Ensalada César':[150,2,2,400,3],'Sushi roll':[220,3,8,700,1.5],
-'Nuggets de pollo':[96,1,0.5,500,3.5],'Papas a la francesa':[117,4,0.3,250,2.5],'Sandwich jamón y queso':[150,2,4,1100,7],
-'Enchiladas':[220,4,3,700,8],'Chilaquiles':[250,4,3,800,6],'Ceviche':[200,1,3,400,0.3]
+// gramos (o ml en bebidas) que pesa cada porción del catálogo, para registrar por peso exacto
+const GRAMS = {
+'Pechuga de pollo':100,'Muslo de pollo':100,'Carne de res magra':100,'Carne molida 80/20':100,'Bistec de res':100,'Lomo de cerdo':100,
+'Chuleta de cerdo':100,'Pavo molido':100,'Salmón':100,'Atún en agua (lata)':100,'Atún fresco':100,'Tilapia':100,
+'Camarones':100,'Sardinas (lata)':100,'Huevo entero':50,'Clara de huevo':33,'Jamón de pavo':56,'Tocino':16,
+'Chorizo':50,'Tofu':100,'Arroz blanco cocido':158,'Arroz integral cocido':195,'Pasta cocida':140,'Pan blanco':28,
+'Pan integral':32,'Tortilla de maíz':26,'Tortilla de harina':45,'Avena cruda':40,'Papa cocida':173,'Camote':130,
+'Quinoa cocida':185,'Frijoles cocidos':172,'Lentejas cocidas':198,'Garbanzos cocidos':164,'Elote':103,'Cereal de maíz':28,
+'Granola':50,'Bagel':95,'Arepa':100,'Manzana':182,'Plátano':118,'Naranja':131,
+'Fresas':152,'Uvas':151,'Sandía':152,'Melón':160,'Piña':165,'Mango':165,
+'Papaya':145,'Pera':178,'Durazno':150,'Kiwi':69,'Aguacate':75,'Arándanos':148,
+'Cerezas':138,'Coco rallado':30,'Brócoli':91,'Espinaca':30,'Lechuga':36,'Tomate':123,
+'Zanahoria':61,'Pepino':52,'Pimiento':119,'Cebolla':80,'Calabacín':124,'Coliflor':107,
+'Champiñones':70,'Ejotes':100,'Apio':40,'Betabel':85,'Espárragos':90,'Leche entera':244,
+'Leche descremada':245,'Leche de almendra':240,'Yogur natural':245,'Yogur griego':170,'Queso fresco':50,'Queso cheddar':30,
+'Queso Oaxaca':30,'Queso cottage':113,'Queso crema':29,'Crema':30,'Mantequilla':14,'Helado de vainilla':66,
+'Papas fritas (bolsa)':40,'Galletas María':21,'Galleta choco chip':16,'Chocolate con leche':40,'Chocolate oscuro 70%':30,'Palomitas naturales':16,
+'Almendras':30,'Nueces':30,'Cacahuates':30,'Crema de cacahuate':32,'Barra de granola':28,'Barra de proteína':60,
+'Hummus':30,'Totopos':30,'Dona glaseada':60,'Pastel de chocolate':95,'Pan dulce':80,'Gomitas':30,
+'Refresco de cola':355,'Refresco light':355,'Jugo de naranja':248,'Cerveza':355,'Cerveza light':355,'Vino tinto':150,
+'Tequila':45,'Café negro':240,'Café con leche':240,'Capuchino':240,'Té verde':240,'Bebida deportiva':355,
+'Bebida energética':250,'Licuado de plátano':300,'Proteína en polvo':32,'Leche con chocolate':250,'Smoothie de fresa':300,'Agua':250,
+'Pizza':107,'Hamburguesa sencilla':150,'Hamburguesa con queso':190,'Hot dog':98,'Taco de carne':85,'Taco al pastor':85,
+'Quesadilla':110,'Burrito':250,'Torta':280,'Tamal':140,'Pozole':400,'Sopa de pollo':245,
+'Ensalada César':150,'Sushi roll':220,'Nuggets de pollo':96,'Papas a la francesa':117,'Sandwich jamón y queso':150,'Enchiladas':220,
+'Chilaquiles':250,'Ceviche':200
 };
 const LIQUID_CAT='Bebidas';
 const FOODS = [];
 RAW.forEach(([cat,emoji,items],ci)=>items.forEach((it,i)=>{
-  const x=EXTRA[it[0]]||[];
   FOODS.push({id:'b'+ci+'_'+i, n:it[0], portion:it[1], kcal:it[2], p:it[3], c:it[4], f:it[5], e:emoji, cat,
-    g:x[0]||null, fib:x[1]??null, sug:x[2]??null, sod:x[3]??null, sat:x[4]??null, liquid:cat===LIQUID_CAT});
+    g:GRAMS[it[0]]||null, liquid:cat===LIQUID_CAT});
 }));
 
 // [nombre, kcal/min, emoji]
@@ -1031,7 +979,7 @@ const EXS = [
 
 /* ================== ESTADO ================== */
 const LSKEY='kaltrack_v1';
-const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72,burn:400,fib:30,sug:50,sod:2300}, profile:{weight:null,target:null},
+const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72,burn:400}, profile:{weight:null,target:null},
   customFoods:[], customEx:[], logs:{}, weights:[], favs:[], recents:[], onboarded:false, celebratedDays:[],
   measures:[], lifts:[], liftEx:[]};
 let DB;
@@ -1064,17 +1012,10 @@ let selDate = today();
 
 function getLog(k){ return DB.logs[k] || {foods:[],ex:[]}; }
 function ensureLog(k){ if(!DB.logs[k]) DB.logs[k]={foods:[],ex:[]}; return DB.logs[k]; }
-const NUTS=['fib','sug','sod','sat'];
-// registros anteriores a los nutrientes extra: se calculan desde el alimento del catálogo
-function entryNut(f,key){
-  if(f[key]!=null) return f[key];
-  const cat=f.fid ? foodById(f.fid) : null;
-  return cat && cat[key]!=null ? cat[key]*(f.qty||1) : 0;
-}
 function dayTotals(k){
   const l=getLog(k);
-  const t={kcal:0,p:0,c:0,f:0,burn:0,fib:0,sug:0,sod:0,sat:0};
-  l.foods.forEach(f=>{t.kcal+=f.kcal;t.p+=f.p;t.c+=f.c;t.f+=f.f; NUTS.forEach(n=>t[n]+=entryNut(f,n));});
+  const t={kcal:0,p:0,c:0,f:0,burn:0};
+  l.foods.forEach(f=>{t.kcal+=f.kcal;t.p+=f.p;t.c+=f.c;t.f+=f.f;});
   l.ex.forEach(e=>t.burn+=e.kcal);
   return t;
 }
@@ -1272,26 +1213,6 @@ function renderHome(){
   $('#hduebanner').style.display = md.due ? 'flex' : 'none';
   $('#hduetxt').textContent = DB.measures.length ? '📏 Te toca registrar tus medidas de la semana' : '📏 Registra tus medidas para seguir tu progreso';
 
-  // nutrientes: la fibra es meta mínima; azúcar, sodio y grasa saturada son límites (sat = 10% de las kcal)
-  const NROWS=[
-    {k:'fib',n:'Fibra',goal:g.fib,u:'g',min:true},
-    {k:'sug',n:'Azúcar',goal:g.sug,u:'g'},
-    {k:'sod',n:'Sodio',goal:g.sod,u:'mg'},
-    {k:'sat',n:'Grasa saturada',goal:Math.round(g.cal*0.10/9),u:'g'}];
-  let alerts=0;
-  $('#nutrows').innerHTML=NROWS.map(r=>{
-    const v=t[r.k], pr=r.goal>0 ? v/r.goal : 0;
-    const cls = r.min ? (pr>=1?'ok':'') : (pr>1?'bad':pr>0.85?'warn':'');
-    if(!r.min && pr>1) alerts++;
-    const val = r.u==='mg' ? fmt(v) : r1(v);
-    return `<div class="nrow"><div class="nhead"><span>${r.n}</span>
-      <span class="nval ${cls}"><b>${val}</b> / ${fmt(r.goal)} ${r.u} ${r.min?'meta':'máx'}</span></div>
-      <div class="nbar"><i class="${r.min?'fib':''} ${cls}" style="width:${Math.min(100,pr*100)}%"></i></div></div>`;
-  }).join('');
-  const nb=$('#nutbadge');
-  nb.textContent = alerts ? `${alerts} pasado${alerts>1?'s':''} del límite` : (t.fib>=g.fib ? '✓ Todo en rango' : 'En rango');
-  nb.className = 'badge '+(alerts ? 'warn' : 'green');
-
   // registros agrupados por momento del día
   $('#logtitle').textContent = isToday ? 'Registros de hoy' : `Registros del ${selDate.getDate()} ${MESES[selDate.getMonth()]}`;
   const l=getLog(k);
@@ -1370,7 +1291,7 @@ function foodTab(t){
   $('#food-detail').style.display = 'none';
   document.querySelectorAll('#foodtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='create' && !editFoodId){
-    ['cf-name','cf-portion','cf-kcal','cf-p','cf-c','cf-f','cf-g','cf-fib','cf-sug','cf-sod','cf-sat'].forEach(id=>$('#'+id).value='');
+    ['cf-name','cf-portion','cf-kcal','cf-p','cf-c','cf-f','cf-g'].forEach(id=>$('#'+id).value='');
     $('#cf-save').textContent='Guardar alimento';
   }
   if(t==='search'){ editFoodId=null; renderFoodResults($('#foodq').value); }
@@ -1461,9 +1382,9 @@ let editingEntry=null; // {type:'foods'|'ex', k, i}
 function entryBase(f){
   const cat = f.fid ? foodById(f.fid) : null;
   if(cat) return cat;
-  const q=f.qty||1, per=v=>v!=null ? v/q : null;
+  const q=f.qty||1;
   return {n:f.n, e:f.e, portion:f.portion, kcal:f.kcal/q, p:f.p/q, c:f.c/q, f:f.f/q, id:null,
-    g:f.grams ? f.grams/q : null, liquid:f.unit==='ml', fib:per(f.fib), sug:per(f.sug), sod:per(f.sod), sat:per(f.sat)};
+    g:f.grams ? f.grams/q : null, liquid:f.unit==='ml'};
 }
 function editFoodEntry(k,i){
   const entry=getLog(k).foods[i]; if(!entry) return;
@@ -1493,24 +1414,21 @@ function chgQty(dir){
   updFoodDetail();
 }
 function updFoodDetail(){
-  const q=foodQty, n=(v,u)=> v==null ? '—' : (u==='mg' ? fmt(v*q) : r1(v*q))+u;
+  const q=foodQty;
   $('#fd-qty').textContent=r1(q);
   $('#fd-kcal').textContent=fmt(foodSel.kcal*q);
   $('#fd-p').textContent=r1(foodSel.p*q)+'g';
   $('#fd-c').textContent=r1(foodSel.c*q)+'g';
   $('#fd-f').textContent=r1(foodSel.f*q)+'g';
-  $('#fd-fib').textContent=n(foodSel.fib,'g'); $('#fd-sug').textContent=n(foodSel.sug,'g');
-  $('#fd-sod').textContent=n(foodSel.sod,'mg'); $('#fd-sat').textContent=n(foodSel.sat,'g');
 }
 function confirmFood(){
   const ed=editingEntry;
   const k = ed ? ed.k : dkey(selDate);
   if(!(foodQty>0)){ toast('Pon una cantidad válida'); return; }
-  const q=foodQty, nv=v=> v==null ? null : v*q;
+  const q=foodQty;
   const item={
     n:foodSel.n, e:foodSel.e, portion:foodSel.portion, qty:Math.round(q*1000)/1000, meal:mealSel, fid:foodSel.id||null,
     kcal:Math.round(foodSel.kcal*q), p:foodSel.p*q, c:foodSel.c*q, f:foodSel.f*q,
-    fib:nv(foodSel.fib), sug:nv(foodSel.sug), sod:nv(foodSel.sod), sat:nv(foodSel.sat),
     grams: unitMode==='g' ? r1(foodGrams) : null, unit: foodSel.liquid ? 'ml' : 'g'
   };
   if(ed){
@@ -1528,7 +1446,7 @@ function saveCustomFood(){
         c=parseFloat($('#cf-c').value)||0, f=parseFloat($('#cf-f').value)||0;
   if(!n || isNaN(kcal) || kcal<0){ toast('Pon nombre y calorías válidas'); return; }
   const opt=id=>{ const v=parseFloat($('#'+id).value); return isNaN(v)||v<0 ? null : v; };
-  const extra={g:opt('cf-g')||null, fib:opt('cf-fib'), sug:opt('cf-sug'), sod:opt('cf-sod'), sat:opt('cf-sat')};
+  const extra={g:opt('cf-g')||null};
   if(editFoodId){
     const cf=DB.customFoods.find(x=>x.id===editFoodId);
     if(cf) Object.assign(cf,{n,portion,kcal,p,c,f},extra);
@@ -1546,7 +1464,7 @@ function startEditFood(id){
   editFoodId=id; // foodTab limpia editFoodId en search; reafirmar
   $('#cf-name').value=f.n; $('#cf-portion').value=f.portion; $('#cf-kcal').value=f.kcal;
   $('#cf-p').value=f.p; $('#cf-c').value=f.c; $('#cf-f').value=f.f;
-  ['g','fib','sug','sod','sat'].forEach(k=>$('#cf-'+k).value=f[k]??'');
+  $('#cf-g').value=f.g??'';
   $('#cf-save').textContent='Actualizar alimento';
 }
 function delCustomFood(id){
@@ -2218,7 +2136,7 @@ function renderStrength(){
 /* ================== AJUSTES ================== */
 function renderSettings(){
   $('#s-cal').value=DB.goals.cal; $('#s-p').value=DB.goals.p;
-  $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f; $('#s-burn').value=DB.goals.burn; $('#s-fib').value=DB.goals.fib; $('#s-sug').value=DB.goals.sug; $('#s-sod').value=DB.goals.sod;
+  $('#s-c').value=DB.goals.c; $('#s-f').value=DB.goals.f; $('#s-burn').value=DB.goals.burn;
   $('#s-w').value=DB.profile.weight??''; $('#s-wt').value=DB.profile.target??'';
   $('#extoggle').classList.toggle('on',!!DB.exAdd);
   updMacHint();
@@ -2291,13 +2209,6 @@ $('#s-cal').addEventListener('change',()=>{
   $('#'+id).addEventListener('change',()=>{
     const v=parseInt($('#'+id).value);
     if(v>0){ DB.goals[key]=v; save(); renderHome(); updMacHint(); toast('Meta actualizada 🎯'); }
-    else renderSettings();
-  });
-});
-[['s-fib','fib'],['s-sug','sug'],['s-sod','sod']].forEach(([id,key])=>{
-  $('#'+id).addEventListener('change',()=>{
-    const v=parseInt($('#'+id).value);
-    if(v>0){ DB.goals[key]=v; save(); renderHome(); toast('Meta actualizada 🎯'); }
     else renderSettings();
   });
 });
