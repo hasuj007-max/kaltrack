@@ -853,6 +853,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <div class="field"><label>Peso (kg)</label><input type="number" inputmode="decimal" step="0.1" id="w-val" placeholder="Ej. 72.5"></div>
       <div class="field"><label>Fecha</label><input type="date" id="w-date"></div>
       <button class="btn" onclick="saveWeight()">Guardar</button>
+      <div class="catlab" style="margin-top:18px">Tus pesajes · toca ✕ para borrar uno equivocado</div>
+      <div id="whist"></div>
     </div>
   </div>
 
@@ -1263,7 +1265,6 @@ const MACRO_DEFS=[
   {key:'f', goal:'f', name:'Grasa',    e:'🥑', color:'#ff7a59'}
 ];
 
-// punto brillante que recorre el arco del gauge, sincronizado con la animación del trazo
 // punto brillante que recorre el arco, sincronizado con la animación del trazo (centro 80,80 · r 66)
 function moveDot(dot, to){
   const from=dot._p||0; dot._p=to;
@@ -1314,7 +1315,7 @@ function renderHome(){
 
   // dos círculos de 270°: consumidas y ejercicio
   setRing('#garc','#gdot', Math.min(1, g.cal>0 ? t.kcal/g.cal : 0));
-  $('#garc').setAttribute('stroke', t.kcal>g.cal ? 'var(--red)' : 'url(#ggrad)');
+  $('#garc').style.stroke = t.kcal>g.cal ? 'var(--red)' : '';   // var() no funciona en el atributo SVG, sí en style
   setRing('#barc','#bdot', Math.min(1, g.burn>0 ? t.burn/g.burn : 0));
 
   // macros
@@ -1350,7 +1351,7 @@ function renderHome(){
   }else{
     const frow=(f,i)=>`<div class="lrow tap" onclick="editFoodEntry('${k}',${i})">
         <div class="lemoji">${f.e}</div>
-        <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.grams ? r1(f.grams)+' '+(f.unit||'g') : r1(f.qty)+' × '+f.portion} · P ${Math.round(f.p)} · C ${Math.round(f.c)} · G ${Math.round(f.f)}</div></div>
+        <div class="linfo"><div class="lname">${esc(f.n)}</div><div class="lsub">${f.grams ? r1(f.grams)+' '+(f.unit||'g') : r1(f.qty)+' × '+esc(f.portion)} · P ${Math.round(f.p)} · C ${Math.round(f.c)} · G ${Math.round(f.f)}</div></div>
         <div class="lkcal">${fmt(f.kcal)}</div>
         <button class="ldel" onclick="event.stopPropagation();delEntry('${k}','foods',${i})">✕</button>
       </div>`;
@@ -1365,7 +1366,7 @@ function renderHome(){
       html+=`<div class="mealhead">🏃 Ejercicio<b>−${fmt(t.burn)} kcal</b></div>`
           + l.ex.map((e,i)=>`<div class="lrow tap" onclick="editExEntry('${k}',${i})">
         <div class="lemoji">${e.e}</div>
-        <div class="linfo"><div class="lname">${e.n}</div><div class="lsub">${e.min} min</div></div>
+        <div class="linfo"><div class="lname">${esc(e.n)}</div><div class="lsub">${e.min} min</div></div>
         <div class="lkcal burn">−${fmt(e.kcal)}</div>
         <button class="ldel" onclick="event.stopPropagation();delEntry('${k}','ex',${i})">✕</button>
       </div>`).join('');
@@ -1429,7 +1430,7 @@ function foodRow(f){
   const fav=DB.favs.includes(f.id);
   return `<div class="lrow" data-id="${f.id}">
       <div class="lemoji">${f.e}</div>
-      <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.portion} · P ${f.p} · C ${f.c} · G ${f.f}</div></div>
+      <div class="linfo"><div class="lname">${esc(f.n)}</div><div class="lsub">${esc(f.portion)} · P ${f.p} · C ${f.c} · G ${f.f}</div></div>
       <div class="lkcal">${fmt(f.kcal)}</div>
       ${f.custom?`<button class="editbtn" data-edit="${f.id}">✎</button>`:''}
       <button class="favbtn ${fav?'on':''}" data-fav="${f.id}">${fav?'★':'☆'}</button>
@@ -1624,7 +1625,7 @@ function renderExResults(q){
   if(!list.length){ $('#exresults').innerHTML='<div class="emptylog">Sin resultados. Crea el tuyo en "Crear".</div>'; return; }
   $('#exresults').innerHTML=list.map(x=>`<div class="lrow" data-id="${x.id}">
     <div class="lemoji">${x.e}</div>
-    <div class="linfo"><div class="lname">${x.n}</div><div class="lsub kcalmin">${Math.round(exRate(x)*10)/10} kcal/min</div></div>
+    <div class="linfo"><div class="lname">${esc(x.n)}</div><div class="lsub kcalmin">${Math.round(exRate(x)*10)/10} kcal/min</div></div>
     <div class="lkcal burn">−${fmt(exRate(x)*30)}<span style="font-size:10px;color:var(--dim)"> /30min</span></div>
   </div>`).join('');
   document.querySelectorAll('#exresults .lrow').forEach(r=>r.addEventListener('click',()=>{
@@ -1670,15 +1671,34 @@ function openWeightSheet(){
   closeSheets(); openSheet('sheet-weight');
   $('#w-val').value = DB.profile.weight ?? '';
   $('#w-date').value = dkey(today());
+  renderWeightHist();
+}
+// el peso del perfil siempre es tu último pesaje
+function syncProfileWeight(){ if(DB.weights.length) DB.profile.weight=DB.weights[DB.weights.length-1].kg; }
+function putWeight(d,kg){
+  DB.weights=DB.weights.filter(w=>w.d!==d);
+  DB.weights.push({d,kg:r1(kg)});
+  DB.weights.sort((a,b)=>a.d<b.d?-1:1);
+  syncProfileWeight();
 }
 function saveWeight(){
   const v=parseFloat($('#w-val').value), d=$('#w-date').value;
-  if(isNaN(v)||v<=0||!d){ toast('Pon un peso válido'); return; }
-  DB.weights=DB.weights.filter(w=>w.d!==d);
-  DB.weights.push({d,kg:v});
-  DB.weights.sort((a,b)=>a.d<b.d?-1:1);
-  if(d===dkey(today()) || DB.weights[DB.weights.length-1].d===d) DB.profile.weight=v;
+  if(!d || !(v>=25 && v<=350)){ toast('Pon un peso entre 25 y 350 kg'); return; }
+  putWeight(d,v);
   save(); closeSheets(); renderAll(); toast('Peso registrado ⚖️');
+}
+function renderWeightHist(){
+  const W=DB.weights.slice().reverse();
+  $('#whist').innerHTML = W.length
+    ? W.slice(0,30).map(x=>`<div class="hrow"><div class="hd">${shortDate(x.d)}</div><div class="hi">${x.kg} kg</div>
+        <button class="ldel" onclick="delWeight('${x.d}')">✕</button></div>`).join('')
+      + (W.length>30 ? `<div class="emptylog">Mostrando los últimos 30 de ${W.length}</div>` : '')
+    : '<div class="emptylog">Aún no hay pesajes.</div>';
+}
+function delWeight(d){
+  if(!confirm(`¿Borrar el pesaje del ${shortDate(d)}?`)) return;
+  DB.weights=DB.weights.filter(x=>x.d!==d); syncProfileWeight();
+  save(); renderWeightHist(); renderAll(); toast('Pesaje borrado');
 }
 
 /* ================== RACHA ================== */
@@ -1809,15 +1829,22 @@ function rangeDays(from,to){
   for(let i=to-1;i>=from;i--){ const d=new Date(t); d.setDate(t.getDate()-i); out.push(d); }
   return out;
 }
+// Hoy cuenta como día registrado, pero no entra a los promedios mientras está a medias
+// (en la mañana, con solo el desayuno, bajaba el promedio y decía "Muy por debajo").
+// Si hoy es el único día con registros, sí se usa para no dejar todo vacío.
 function periodStats(days){
-  const g=DB.goals; let n=0,kcal=0,p=0,c=0,f=0,burn=0,onT=0,best=null;
-  days.forEach(d=>{
-    const k=dkey(d); if(!hasEntries(k)) return;
-    const t=dayTotals(k); n++; kcal+=t.kcal; p+=t.p; c+=t.c; f+=t.f; burn+=t.burn;
+  const g=DB.goals, tk=dkey(today());
+  const done=days.filter(d=>hasEntries(dkey(d)));
+  const full=done.filter(d=>dkey(d)!==tk), use=full.length ? full : done;
+  let kcal=0,p=0,c=0,f=0,burn=0,onT=0,best=null;
+  done.forEach(d=>{ burn+=dayTotals(dkey(d)).burn; });
+  use.forEach(d=>{
+    const t=dayTotals(dkey(d)); kcal+=t.kcal; p+=t.p; c+=t.c; f+=t.f;
     if(g.cal>0 && Math.abs(t.kcal-g.cal)<=g.cal*0.1) onT++;
     if(t.kcal>0 && (!best || Math.abs(t.kcal-g.cal)<Math.abs(best.kcal-g.cal))) best={d,kcal:t.kcal};
   });
-  return {n, avg:n?kcal/n:null, avgP:n?p/n:null, p, c, f, burn, onT, best};
+  const m=use.length;
+  return {n:done.length, nAvg:m, avg:m?kcal/m:null, avgP:m?p/m:null, p, c, f, burn, onT, best};
 }
 // qué dirección es "buena" depende de tu objetivo: para bajar, menos es mejor
 const wantsDown=()=> (DB.profile.goalType||'bajar')!=='subir';
@@ -1882,7 +1909,7 @@ function renderProgress(){
   else if(pct>105){ gs.textContent='Te estás pasando'; gs.className='subtxt bad'; }
   else if(pct<75){ gs.textContent='Muy por debajo'; gs.className='subtxt warn'; }
   else { gs.textContent='¡Vas bien!'; gs.className='subtxt ok'; }
-  $('#gdays').textContent = cur.n ? `${cur.onT} de ${cur.n} días en meta` : '';
+  $('#gdays').textContent = cur.nAvg ? `${cur.onT} de ${cur.nAvg} días en meta` : '';
 
   // insights
   $('#iavg').textContent = cur.avg!=null ? fmt(cur.avg) : '—';
@@ -2000,6 +2027,17 @@ function weightTrend(){
     return {d:p.d, kg:p.kg, tr:my+m*(p.t-mx), slope:m, span:pts[n-1].t-pts[0].t};
   });
 }
+// ritmo ACTUAL en kg/semana: regresión de los pesajes de las últimas 4 semanas (probado: error ~0.06 kg/sem
+// y detecta un estancamiento en ~2 semanas). Lo usan la tarjeta de peso y la proyección, para que coincidan.
+function weightPace(){
+  const W=DB.weights; if(W.length<3) return null;
+  const lt=fromKey(W[W.length-1].d).getTime()/86400000;
+  const rp=W.map(x=>({t:fromKey(x.d).getTime()/86400000, kg:x.kg})).filter(q=>q.t>lt-28);
+  if(rp.length<3 || rp[rp.length-1].t-rp[0].t<7) return null;
+  const mx=rp.reduce((a,q)=>a+q.t,0)/rp.length, my=rp.reduce((a,q)=>a+q.kg,0)/rp.length;
+  let sxy=0,sxx=0; rp.forEach(q=>{ sxy+=(q.t-mx)*(q.kg-my); sxx+=(q.t-mx)**2; });
+  return sxx ? sxy/sxx*7 : null;
+}
 let wRange=0;
 $('#wrange').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -2037,16 +2075,7 @@ function renderWeight(){
   const diff = ws.length>1 ? r1(last.tr-first.tr) : null;
   setDelta($('#wdelta'), diff, diff==null?'':`${Math.abs(diff)} kg`, downIsGood);
   $('#wdeltalab').textContent = ws.length>1 ? `desde el ${shortDate(first.d)}` : 'primer pesaje';
-  // ritmo ACTUAL: pendiente de las últimas 4 semanas (probado: error ~0.06 kg/sem y detecta un
-  // estancamiento en ~2 semanas; con 3 semanas el ruido lo movía demasiado)
-  const lt=fromKey(last.d).getTime()/86400000;
-  const rp=DB.weights.map(x=>({t:fromKey(x.d).getTime()/86400000, kg:x.kg})).filter(q=>q.t>lt-28);
-  let perWeek=null;
-  if(rp.length>=3 && rp[rp.length-1].t-rp[0].t>=7){
-    const mx=rp.reduce((a,q)=>a+q.t,0)/rp.length, my=rp.reduce((a,q)=>a+q.kg,0)/rp.length;
-    let sxy=0,sxx=0; rp.forEach(q=>{ sxy+=(q.t-mx)*(q.kg-my); sxx+=(q.t-mx)**2; });
-    perWeek = sxx ? sxy/sxx*7 : null;
-  }
+  const perWeek=weightPace();
   $('#wrate').innerHTML = perWeek==null
     ? 'Pésate varias veces durante al menos una semana para calcular tu ritmo.'
     : Math.abs(perWeek)<0.05
@@ -2063,45 +2092,44 @@ function renderWeight(){
   });
 }
 
-/* Proyección: regresión lineal sobre los pesos de los últimos 60 días.
+/* Proyección: parte de tu peso de tendencia (sin ruido) y usa el mismo ritmo actual que la tarjeta de peso.
    Se basa en tu tendencia REAL medida, no en un modelo teórico de déficit. */
 function renderProjection(){
-  const card=$('#projcard');
-  const target=DB.profile.target;
-  const lim=new Date(today()); lim.setDate(lim.getDate()-60);
-  const pts=DB.weights.filter(x=>x.d>=dkey(lim));
-  if(target==null || pts.length<2){ card.style.display='none'; return; }
-  const t0=fromKey(pts[0].d).getTime();
-  const X=pts.map(x=>(fromKey(x.d).getTime()-t0)/86400000); // días
-  const Y=pts.map(x=>x.kg);
-  const spanDias=X[X.length-1];
-  if(spanDias<7){ card.style.display='none'; return; } // muy pocos datos para una tendencia honesta
-  const n=X.length, sx=X.reduce((a,b)=>a+b,0), sy=Y.reduce((a,b)=>a+b,0);
-  const sxy=X.reduce((a,x,i)=>a+x*Y[i],0), sxx=X.reduce((a,x)=>a+x*x,0);
-  const den=n*sxx-sx*sx;
-  if(!den){ card.style.display='none'; return; }
-  const kgPorDia=(n*sxy-sx*sy)/den;
-  const actual=DB.profile.weight ?? Y[Y.length-1];
-  const falta=target-actual;              // negativo si hay que bajar
-  const kgSem=kgPorDia*7;
+  const card=$('#projcard'), target=DB.profile.target, W=DB.weights;
+  if(target==null || !W.length){ card.style.display='none'; return; }
+  const goalDown = target < W[0].kg;                       // meta por debajo de donde empezaste = bajar
+  const tr=weightTrend(), now=tr[tr.length-1].tr, actual=W[W.length-1].kg;
+  const reached = goalDown ? Math.min(now,actual) <= target+0.2 : Math.max(now,actual) >= target-0.2;
+  const perWeek=weightPace();
   card.style.display='block';
-  $('#projrate').textContent=(kgSem>=0?'↑ +':'↓ ')+ (Math.round(Math.abs(kgSem)*100)/100) +' kg/sem';
-  $('#projrate').className='badge '+(Math.abs(falta)<0.3 ? 'green' : (falta<0)===(kgSem<0) ? 'green' : 'warn');
-  if(Math.abs(falta)<0.3){
+  const rb=$('#projrate');
+  if(perWeek==null){ rb.textContent='—'; rb.className='badge'; }
+  else{ rb.textContent=(perWeek>=0?'↑ +':'↓ ')+Math.abs(Math.round(perWeek*100)/100)+' kg/sem';
+        rb.className='badge '+(Math.abs(perWeek)<0.05 ? '' : (perWeek<0)===goalDown ? 'green' : 'warn'); }
+  if(reached){
+    const extra=Math.abs(r1(now-target));
     $('#projmain').innerHTML='🎉 <span class="hl">¡Meta alcanzada!</span>';
-    $('#projsub').textContent=`Estás en ${Math.round(actual*10)/10} kg, tu objetivo era ${target} kg.`;
+    $('#projsub').textContent = extra>=0.3 && (goalDown ? now<target : now>target)
+      ? `Tu tendencia está en ${r1(now)} kg: ${extra} kg ${goalDown?'por debajo':'por encima'} de tu meta de ${target} kg. Si quieres seguir, pon una meta nueva en Ajustes.`
+      : `Estás en ${r1(now)} kg, tu objetivo era ${target} kg.`;
     return;
   }
-  if(Math.abs(kgSem)<0.05 || (falta<0)!==(kgSem<0)){
-    $('#projmain').textContent = Math.abs(kgSem)<0.05 ? 'Tu peso está estable' : 'Tu tendencia va en sentido contrario a tu meta';
-    $('#projsub').textContent = `Te faltan ${Math.abs(Math.round(falta*10)/10)} kg para llegar a ${target} kg. Ajusta tu meta de calorías o tu actividad para retomar el rumbo.`;
+  const falta=target-now;
+  if(perWeek==null){
+    $('#projmain').textContent=`Te faltan ${Math.abs(r1(falta))} kg para ${target} kg`;
+    $('#projsub').textContent='Pésate varias veces durante al menos una semana para calcular cuándo llegas.';
     return;
   }
-  const dias=Math.ceil(falta/kgPorDia);
+  if(Math.abs(perWeek)<0.05 || (falta<0)!==(perWeek<0)){
+    $('#projmain').textContent = Math.abs(perWeek)<0.05 ? 'Tu peso está estable' : 'Tu tendencia va en sentido contrario a tu meta';
+    $('#projsub').textContent = `Te faltan ${Math.abs(r1(falta))} kg para llegar a ${target} kg. Ajusta tu meta de calorías o tu actividad para retomar el rumbo.`;
+    return;
+  }
+  const dias=Math.ceil(falta/(perWeek/7));
   const fecha=new Date(today()); fecha.setDate(fecha.getDate()+dias);
-  const semanas=Math.round(dias/7);
+  const semanas=Math.max(1,Math.round(dias/7));
   $('#projmain').innerHTML=`A este ritmo llegas a <span class="hl">${target} kg</span> el <span class="hl">${fecha.getDate()} ${MESES[fecha.getMonth()]} ${fecha.getFullYear()}</span>`;
-  $('#projsub').textContent=`Faltan ${Math.abs(Math.round(falta*10)/10)} kg · unas ${semanas} semana${semanas===1?'':'s'}. Calculado con tus ${pts.length} pesajes de los últimos ${Math.round(spanDias)} días.`;
+  $('#projsub').textContent=`Faltan ${Math.abs(r1(falta))} kg · unas ${semanas} semana${semanas===1?'':'s'} a tu ritmo actual de las últimas 4 semanas.`;
 }
 
 /* ================== BALANCE DEL DÍA ================== */
@@ -2176,7 +2204,10 @@ function openMeasureSheet(){
 function saveMeasure(){
   const d=$('#m-date').value; if(!d){ toast('Pon la fecha'); return; }
   const rec={d}; let any=false;
-  MKEYS.forEach(m=>{ const v=parseFloat($('#m-'+m.k).value); if(v>0){ rec[m.k]=r1(v); any=true; } });
+  let bad=false;
+  MKEYS.forEach(m=>{ const v=parseFloat($('#m-'+m.k).value); if(isNaN(v)) return;
+    if(v<10 || v>250){ bad=true; return; } rec[m.k]=r1(v); any=true; });
+  if(bad){ toast('Revisa: las medidas van en cm, entre 10 y 250'); return; }
   if(!any){ toast('Escribe al menos una medida'); return; }
   const prev=DB.measures.find(x=>x.d===d);   // misma fecha: se completa / actualiza
   DB.measures=DB.measures.filter(x=>x.d!==d);
@@ -2490,13 +2521,13 @@ function renderSettings(){
   renderInstall();
   $('#myfoods').innerHTML = DB.customFoods.length ? DB.customFoods.map(f=>`<div class="lrow">
       <div class="lemoji">${f.e}</div>
-      <div class="linfo"><div class="lname">${f.n}</div><div class="lsub">${f.portion} · ${fmt(f.kcal)} kcal</div></div>
+      <div class="linfo"><div class="lname">${esc(f.n)}</div><div class="lsub">${esc(f.portion)} · ${fmt(f.kcal)} kcal</div></div>
       <button class="editbtn" onclick="startEditFood('${f.id}')">✎</button>
       <button class="ldel" onclick="delCustomFood('${f.id}')">✕</button>
     </div>`).join('') : '<div class="emptylog">Aún no creas alimentos propios.</div>';
   $('#myex').innerHTML = DB.customEx.length ? DB.customEx.map(x=>`<div class="lrow">
       <div class="lemoji">${x.e}</div>
-      <div class="linfo"><div class="lname">${x.n}</div><div class="lsub">${x.rate} kcal/min</div></div>
+      <div class="linfo"><div class="lname">${esc(x.n)}</div><div class="lsub">${x.rate} kcal/min</div></div>
       <button class="ldel" onclick="delCustomEx('${x.id}')">✕</button>
     </div>`).join('') : '<div class="emptylog">Aún no creas ejercicios propios.</div>';
 }
@@ -2536,8 +2567,9 @@ function saveGoals(){
 }
 function saveProfile(){
   const w=parseFloat($('#s-w').value), wt=parseFloat($('#s-wt').value);
-  DB.profile.weight = isNaN(w)?DB.profile.weight:w;
-  DB.profile.target = isNaN(wt)?DB.profile.target:wt;
+  // cambiar tu peso aquí cuenta como pesaje de hoy, para que la tendencia y las gráficas lo vean
+  if(w>=25 && w<=350 && r1(w)!==DB.profile.weight) putWeight(dkey(today()), w);
+  if(wt>=25 && wt<=350) DB.profile.target=wt;
   const inRange=(id,lo,hi)=>{ const v=parseFloat($('#'+id).value); return v>=lo && v<=hi ? v : null; };
   const age=inRange('s-age',10,100), h=inRange('s-h',100,250), st=inRange('s-steps',0,60000), sl=inRange('s-sleep',3,12);
   if(age!=null) DB.profile.age=age;
@@ -2617,13 +2649,22 @@ async function doInstall(){
 }
 
 /* ================== RESPALDO ================== */
-function exportData(){
-  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+// En iPhone, una app instalada en la pantalla de inicio no siempre descarga archivos: primero se intenta
+// el menú Compartir de iOS ("Guardar en Archivos", AirDrop…); si no existe, descarga normal.
+async function exportData(){
+  const name='kaltrack-respaldo-'+dkey(today())+'.json', json=JSON.stringify(DB,null,2);
+  try{
+    const file=new File([json], name, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Respaldo KalTrack'});
+      toast('Respaldo listo 💾'); return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }   // canceló el menú: no hacer nada
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='kaltrack-respaldo-'+dkey(today())+'.json';
+  a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download=name;
   document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(a.href);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
   toast('Respaldo descargado 💾');
 }
 function importData(ev){
