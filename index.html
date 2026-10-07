@@ -196,12 +196,13 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .exgrid,.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .excard,.mcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;text-align:left;color:var(--txt);font:inherit;cursor:pointer;min-width:0;width:100%}
 .excard.on,.mcard.on{border-color:#c8f56066;box-shadow:0 0 18px #c8f56014}
-.excard .en{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.excard .en{font-size:13px;font-weight:600;line-height:1.3;min-height:2.6em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .excard .ev{font-size:21px;font-weight:700;letter-spacing:-.5px;margin-top:6px;font-variant-numeric:tabular-nums}
 .excard .ev small{font-size:11px;color:var(--mut);font-weight:500;letter-spacing:0}
 .excard .es{font-size:11px;color:var(--mut);font-weight:500;margin-top:3px}
 .excard .is,.mcard .is{display:block;font-size:11px;color:var(--mut);font-weight:600;margin-top:4px}
 .excard .is.ok,.mcard .is.ok{color:var(--lime)} .excard .is.bad,.mcard .is.bad{color:var(--coral)}
+.excard .is.warn{color:var(--amber)}
 .setshead,.setrow{display:grid;grid-template-columns:34px 1fr 1fr 28px;gap:8px;align-items:center}
 .setshead{font-size:10.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:2px 0 6px;text-align:center}
 .setrow{margin-bottom:8px}
@@ -611,7 +612,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <li><b>🏆 Récord:</b> cuando tu 1RM de hoy supera tu mejor marca anterior en ese ejercicio.</li>
         <li><b>Volumen:</b> peso × repeticiones de todas tus series sumadas; es el trabajo total que hiciste.</li>
         <li><b>Para progresar:</b> al registrar te precargo lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
-        <li><b>Peso corporal</b> (dominadas, fondos, lagartijas): escribe solo el peso extra (0 si no cargas nada); tu peso se suma solo.</li>
+        <li><b>Peso corporal</b> (dominadas, fondos, lagartijas): escribe solo el peso extra (0 si no cargas nada). La app suma la parte de tu peso que de verdad mueves: en una lagartija ~64%, en una dominada ~95%.</li>
       </ul>
     </details>
     <div class="row3">
@@ -634,6 +635,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="kdelta"><span class="dbadge" id="ldelta">—</span><small id="ldeltalab"></small></div>
       </div>
       <div class="chart" id="lchart"></div>
+      <div class="legend"><span><i style="background:#ffffff80"></i>Cada registro</span><span><i style="background:var(--lime)"></i>Tu récord</span></div>
+      <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
       <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
       <div class="catlab">Historial · toca un registro para editarlo</div>
       <div id="lhist"></div>
@@ -1929,9 +1932,13 @@ function drawChart(host, series, xlabels, opts={}){
     svg+=`<text x="${W-padR+10}" y="${y+3.5}" font-size="10" font-weight="500" fill="#5b5b63">${opts.dec?Math.round(v*10)/10:fmt(v)}</text>`;
   }
   // labels X (~5)
+  // con eje por fecha las etiquetas pueden quedar juntas: se salta la que choca y la primera va alineada a la izquierda
   const step=Math.max(1,Math.ceil(n/5));
+  let lastX=-1e9;
   for(let i=0;i<n;i+=step){
-    svg+=`<text x="${X(i)}" y="${H-7}" font-size="10" font-weight="500" fill="#5b5b63" text-anchor="middle">${xlabels[i]}</text>`;
+    const x=X(i); if(x-lastX<46) continue; lastX=x;
+    const first=x<padL+22;
+    svg+=`<text x="${first?Math.max(2,x-6):x}" y="${H-7}" font-size="10" font-weight="500" fill="#5b5b63" text-anchor="${first?'start':'middle'}">${xlabels[i]}</text>`;
   }
   hl.forEach(h=>{
     const y=Y(h.v), c=h.color||'#f7b733';
@@ -2001,7 +2008,13 @@ $('#periodseg').addEventListener('click',e=>{
 });
 const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const PERIOD_LAB={7:'vs semana pasada',30:'vs mes pasado',90:'vs 3 meses previos',365:'vs año previo'};
-const shortDate=k=>{const d=fromKey(k);return d.getDate()+' '+MESES[d.getMonth()];};
+// con el año solo si no es el actual ("7 oct 2023"): con varios años de datos "desde el 7 oct" era ambiguo
+const shortDate=k=>{const d=fromKey(k);return d.getDate()+' '+MESES[d.getMonth()]+(d.getFullYear()!==today().getFullYear()?' '+d.getFullYear():'');};
+// etiquetas del eje X: en gráficas de más de ~10 meses, mes y año ("oct '23"); si no, día y mes
+const axisDates=keys=>{
+  const long=keys.length>1 && daysBetween(keys[0],keys[keys.length-1])>300;
+  return keys.map(k=>{ const d=fromKey(k); return long ? MESES[d.getMonth()]+" '"+String(d.getFullYear()).slice(2) : d.getDate()+' '+MESES[d.getMonth()]; });
+};
 
 // días entre hace (to-1) y hace `from` días, del más viejo al más reciente
 function rangeDays(from,to){
@@ -2265,7 +2278,7 @@ function renderWeight(){
   drawChart(host,[
     {data:ws.map(x=>x.kg), color:'#ffffff', line:false, dots:'all', r:3, op:.45},
     {data:ws.map(x=>r1(x.tr)), color:'#c8f560', fill:true, dots:'last'}
-  ], ws.map(x=>shortDate(x.d)), {
+  ], axisDates(ws.map(x=>x.d)), {
     h:185, dec:true, xv:ws.map(x=>fromKey(x.d).getTime()/86400000),
     hlines: wt!=null ? [{v:wt, label:`Meta ${r1(wt)} kg`, color:'#f7b733'}] : [],
     tip:i=>`<b>${r1(ws[i].tr)} kg</b> tendencia<br>${ws[i].kg} kg pesaje<br><small>${shortDate(ws[i].d)}</small>`
@@ -2316,9 +2329,10 @@ function renderProjection(){
 // Gasto estimado del día completo: basal (Mifflin-St Jeor, incluye las horas de sueño) + pasos + digestión + ejercicio.
 // No toca la meta de calorías: la meta ya incluye tu actividad, sumarlo a "restantes" lo contaría doble.
 // peso de ese día: el último pesaje en o antes de la fecha (para días pasados no sirve el peso de hoy)
-function weightOn(k){
-  let w=null; for(const x of DB.weights){ if(x.d<=k) w=x.kg; else break; }
-  return w ?? (DB.weights[0]?.kg ?? DB.profile.weight);
+function weightOn(k){   // búsqueda binaria: Fuerza la llama por cada serie de peso corporal
+  const W=DB.weights; let lo=0, hi=W.length-1, w=null;
+  while(lo<=hi){ const m=(lo+hi)>>1; if(W[m].d<=k){ w=W[m].kg; lo=m+1; } else hi=m-1; }
+  return w ?? (W[0]?.kg ?? DB.profile.weight);
 }
 function dayBurnEstimate(t,k){
   const pr=DB.profile, w=k ? weightOn(k) : pr.weight, h=pr.height, a=pr.age, sex=pr.sex||'m';
@@ -2362,10 +2376,12 @@ function renderBalance(t,k){
 }
 
 /* ================== MEDIDAS ================== */
-// upGood null = neutral: pierna y pecho mezclan grasa y músculo; al bajar de peso es normal que bajen
+// upGood null = neutral: pierna y pecho mezclan grasa y músculo; al bajar de peso es normal que bajen.
+// Bíceps igual mientras bajas grasa (en la simulación de 3 años bajó de 50 a 46 cm ganando músculo y salía
+// en rojo); solo si tu objetivo es subir masa, que suba cuenta como bueno.
 const MKEYS=[
   {k:'leg',  n:'Pierna',  e:'🦵', upGood:null},
-  {k:'bic',  n:'Bíceps',  e:'💪', upGood:true},
+  {k:'bic',  n:'Bíceps',  e:'💪', get upGood(){ return DB.profile.goalType==='subir' ? true : null; }},
   {k:'chest',n:'Pecho',   e:'🫁', upGood:null},
   {k:'waist',n:'Cintura', e:'📏', upGood:false}];
 let mSel='waist';
@@ -2431,7 +2447,7 @@ function renderBody(){
   setDelta($('#mdelta'), diff, diff==null?'':Math.abs(diff)+' cm', m.upGood==null ? null : !m.upGood);
   $('#mdeltalab').textContent = pts.length>1 ? `desde el ${shortDate(pts[0].d)}` : '';
   if(pts.length<2) $('#mchart').innerHTML=`<div class="empty">${pts.length?'Con tu siguiente medición verás la línea 📈':'Registra tus medidas para ver tu evolución 📏'}</div>`;
-  else drawChart($('#mchart'),[{data:pts.map(x=>x[mSel]),color:'#c8f560',fill:true}], pts.map(x=>shortDate(x.d)),
+  else drawChart($('#mchart'),[{data:pts.map(x=>x[mSel]),color:'#c8f560',fill:true}], axisDates(pts.map(x=>x.d)),
     {h:160, straight:true, dots:true, dec:true, tip:i=>`<b>${pts[i][mSel]} cm</b><br><small>${shortDate(pts[i].d)}</small>`});
 
   $('#mhist').innerHTML = M.length ? M.slice().reverse().map(x=>`<div class="hrow">
@@ -2442,7 +2458,8 @@ function renderBody(){
 }
 
 /* ================== FUERZA ================== */
-// Biblioteca: [nombre, grupo, equipo, foto de free-exercise-db (dominio público) en ex/, usa peso corporal]
+// Biblioteca: [nombre, grupo, equipo, foto de free-exercise-db (dominio público) en ex/,
+//   parte de tu peso corporal que de verdad cargas (solo ejercicios de peso corporal)]
 const LIB=[
 ['Press de banca con barra','Pecho','Barra','Barbell_Bench_Press_-_Medium_Grip'],
 ['Press de banca con mancuernas','Pecho','Mancuernas','Dumbbell_Bench_Press'],
@@ -2452,9 +2469,9 @@ const LIB=[
 ['Press de pecho en máquina','Pecho','Máquina','Leverage_Chest_Press'],
 ['Aperturas en máquina (pec deck)','Pecho','Máquina','Butterfly'],
 ['Cruces en polea','Pecho','Polea','Cable_Crossover'],
-['Fondos en paralelas','Pecho','Peso corporal','Dips_-_Chest_Version',1],
-['Lagartijas','Pecho','Peso corporal','Pushups',1],
-['Dominadas','Espalda','Peso corporal','Pullups',1],
+['Fondos en paralelas','Pecho','Peso corporal','Dips_-_Chest_Version',0.95],
+['Lagartijas','Pecho','Peso corporal','Pushups',0.64],
+['Dominadas','Espalda','Peso corporal','Pullups',0.95],
 ['Jalón al pecho en polea','Espalda','Polea','Wide-Grip_Lat_Pulldown'],
 ['Remo con barra','Espalda','Barra','Bent_Over_Barbell_Row'],
 ['Remo con mancuerna a una mano','Espalda','Mancuernas','One-Arm_Dumbbell_Row'],
@@ -2478,7 +2495,7 @@ const LIB=[
 ['Extensión de tríceps en polea','Tríceps','Polea','Triceps_Pushdown'],
 ['Press francés','Tríceps','Barra','EZ-Bar_Skullcrusher'],
 ['Extensión de tríceps sobre la cabeza','Tríceps','Mancuernas','Standing_Dumbbell_Triceps_Extension'],
-['Fondos en banco','Tríceps','Peso corporal','Bench_Dips',1],
+['Fondos en banco','Tríceps','Peso corporal','Bench_Dips',0.6],
 ['Patada de tríceps','Tríceps','Mancuernas','Tricep_Dumbbell_Kickback'],
 ['Sentadilla con barra','Pierna','Barra','Barbell_Full_Squat'],
 ['Sentadilla goblet','Pierna','Mancuernas','Goblet_Squat'],
@@ -2497,21 +2514,24 @@ const LIB=[
 ['Patada de glúteo en polea','Glúteo','Polea','One-Legged_Cable_Kickback'],
 ['Crunch en polea','Abdomen','Polea','Cable_Crunch'],
 ['Crunch en máquina','Abdomen','Máquina','Ab_Crunch_Machine'],
-['Elevación de piernas colgado','Abdomen','Peso corporal','Hanging_Leg_Raise',1]
-].map(([n,g,eq,img,bw])=>({n,g,eq,img,bw:!!bw}));
+['Elevación de piernas colgado','Abdomen','Peso corporal','Hanging_Leg_Raise',0.34]
+].map(([n,g,eq,img,bwf])=>({n,g,eq,img,bw:!!bwf,bwf:bwf||0}));
 const LIB_BY=Object.fromEntries(LIB.map(x=>[x.n,x]));
 const LGROUPS=['Pecho','Espalda','Hombro','Bíceps','Tríceps','Pierna','Glúteo','Abdomen'];
 const LEQUIP=['Máquina','Mancuernas','Barra','Polea','Peso corporal'];
 const exImg=(x,n)=>`ex/${x.img}-${n}.jpg`;
-// en ejercicios de peso corporal el campo kg es peso EXTRA; la carga real es tu peso + extra
+// En ejercicios de peso corporal el campo kg es peso EXTRA. La carga real es la parte de tu peso que mueves
+// (en una lagartija ~64%, en una dominada ~95%) + el extra, y con tu peso DE ESE DÍA: con el de hoy,
+// los registros de cuando pesabas más salían más bajos y el progreso se veía inflado.
 const isBW=ex=>!!(LIB_BY[ex] && LIB_BY[ex].bw);
-const setLoad=(ex,s)=> isBW(ex) ? (DB.profile.weight||70)+(+s.kg||0) : +s.kg;
+const bodyOn=d=> weightOn(d||dkey(today())) || DB.profile.weight || 70;
+const setLoad=(ex,s,d)=> isBW(ex) ? bodyOn(d)*LIB_BY[ex].bwf + (+s.kg||0) : +s.kg;
 const validSet=(ex,s)=> s.reps>0 && (isBW(ex) ? true : s.kg>0);
 const fmtSet=(ex,s)=> isBW(ex) ? `${+s.kg ? '+'+r1(s.kg) : 'PC'}×${s.reps}` : `${r1(s.kg)}×${s.reps}`;
 // 1RM estimado con la fórmula de Epley
 const e1rm=(kg,reps)=> !(kg>0)||!(reps>0) ? 0 : reps===1 ? kg : kg*(1+reps/30);
-const sessBest=l=>Math.max(0,...l.sets.map(s=>e1rm(setLoad(l.ex,s),s.reps)));
-const sessVol=l=>l.sets.reduce((a,s)=>a+setLoad(l.ex,s)*(s.reps||0),0);
+const sessBest=l=>Math.max(0,...l.sets.map(s=>e1rm(setLoad(l.ex,s,l.d),s.reps)));
+const sessVol=l=>l.sets.reduce((a,s)=>a+setLoad(l.ex,s,l.d)*(s.reps||0),0);
 const liftsOf=ex=>DB.lifts.filter(l=>l.ex===ex).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.id<b.id?-1:1));
 // máximo levantado de verdad (no estimado): el peso más alto y, con ese peso, más reps; en peso corporal, kg extra y reps
 const setCmp=(a,b)=>(+a.kg||0)-(+b.kg||0) || (a.reps||0)-(b.reps||0);
@@ -2594,12 +2614,13 @@ function currentLiftEx(){ const v=$('#lf-ex').value; return v==='__new' ? $('#lf
 function updLiftLive(){
   const ex=currentLiftEx(), valid=liftSets.filter(s=>validSet(ex,s));
   if(!valid.length){ $('#lf-live').textContent = isBW(ex) ? 'Escribe las repeticiones de cada serie.' : 'Escribe los kg y las repeticiones de cada serie.'; return; }
-  const best=Math.max(...valid.map(s=>e1rm(setLoad(ex,s),s.reps))), vol=valid.reduce((a,s)=>a+setLoad(ex,s)*s.reps,0);
+  const d=$('#lf-date').value||dkey(today());
+  const best=Math.max(...valid.map(s=>e1rm(setLoad(ex,s,d),s.reps))), vol=valid.reduce((a,s)=>a+setLoad(ex,s,d)*s.reps,0);
   const prev=liftsOf(ex).filter(l=>l.id!==editingLift);
   const prevBest=prev.length ? Math.max(...prev.map(sessBest)) : null;
   const mx=maxSet(ex, editingLift), top=valid.reduce((a,s)=>setCmp(s,a)>0?s:a);
   $('#lf-live').innerHTML=`1RM estimado: <b>${r1(best)} kg</b> · Volumen: <b>${fmt(vol)} kg</b>`
-    + (isBW(ex) ? `<br><small>Con tu peso corporal de ${r1(DB.profile.weight||70)} kg</small>` : '')
+    + (isBW(ex) ? `<br><small>Cuenta el ${Math.round(LIB_BY[ex].bwf*100)}% de tu peso (${r1(bodyOn(d)*LIB_BY[ex].bwf)} de ${r1(bodyOn(d))} kg): lo que de verdad cargas en este ejercicio</small>` : '')
     + (mx && setCmp(top,mx.s)>0 ? `<br><span class="pr">💪 ¡Nuevo máximo: ${fmtMax(ex,top)}! Antes: ${fmtMax(ex,mx.s)}</span>` : '')
     + (prevBest==null ? '' : best>prevBest+1e-9
         ? `<br><span class="pr">🏆 ¡Nuevo récord! Antes: ${r1(prevBest)} kg</span>`
@@ -2656,6 +2677,30 @@ function delLift(id){
   if(!confirm(`¿Borrar ${l.ex} del ${shortDate(l.d)}?`)) return;
   DB.lifts=DB.lifts.filter(x=>x.id!==id); save(); renderStrength();
 }
+// Estado de un ejercicio contra su historial, no solo contra el registro anterior: antes un estancamiento de
+// semanas salía "↑ subiendo" si el último día fue mejor que el penúltimo, y una semana ligera salía "↓ bajó".
+function liftStatus(ls, b){
+  if(ls.length<2) return '';
+  let iRec=0;                                   // el último registro que superó a todos los anteriores
+  for(let i=1, top=b[0]; i<b.length; i++) if(b[i]>top+1e-9){ top=b[i]; iRec=i; }
+  const last=b.length-1, rec=b[iRec];
+  if(iRec===last) return '<span class="is ok">🏆 récord</span>';
+  const since=last-iRec, days=daysBetween(ls[iRec].d, ls[last].d);
+  if(since>=3 && days>=14){
+    const ago=daysBetween(ls[iRec].d, dkey(today())), w=Math.round(ago/7), m=Math.round(ago/30.4);
+    return `<span class="is warn">⚠️ estancado · sin récord hace ${ago<63 ? `${w} semanas` : m<12 ? `${m} meses` : 'más de un año'}</span>`;
+  }
+  const pct=Math.round(b[last]/rec*100);
+  return `<span class="is">• ${pct>=100 ? 'igualaste tu récord' : `a ${pct}% de tu récord`}</span>`;
+}
+let lRange=0;
+$('#lrange').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  lRange=+b.dataset.r;
+  document.querySelectorAll('#lrange button').forEach(x=>x.classList.toggle('on',x===b));
+  renderStrength();
+});
+$('#lf-date').addEventListener('change',()=>updLiftLive());   // en peso corporal cambia el peso que se usa
 function renderStrength(){
   const L=DB.lifts, t=today();
   const ago=n=>{ const d=new Date(t); d.setDate(d.getDate()-n); return dkey(d); };
@@ -2684,10 +2729,22 @@ function renderStrength(){
   const diff = S.length>1 ? r1(bests[bests.length-1]-bests[0]) : null;
   setDelta($('#ldelta'), diff, diff==null?'':Math.abs(diff)+' kg', false);
   $('#ldeltalab').textContent = S.length>1 ? `última vs ${shortDate(S[0].d)}` : 'primer registro';
+  // con meses de registros la línea de cada sesión era ilegible (las semanas ligeras parecían caídas):
+  // cada registro va como punto tenue y la línea es tu récord hasta esa fecha, que nunca baja
+  const run=[]; bests.forEach((b,i)=>run.push(Math.max(b, i ? run[i-1] : 0)));
+  const span=S.length>1 ? daysBetween(S[0].d, S[S.length-1].d) : 0;
+  $('#lrange').style.display = span>90 ? '' : 'none';
+  let i0=0;
+  if(lRange>0 && span>90){ const lim=new Date(today()); lim.setDate(lim.getDate()-lRange+1); const limk=dkey(lim); i0=S.findIndex(l=>l.d>=limk); if(i0<0) i0=S.length; }
+  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0);
   if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra este ejercicio otro día para ver tu línea de progreso 📈</div>';
-  else drawChart($('#lchart'),[{data:bests.map(r1),color:'#c8f560',fill:true}], S.map(l=>shortDate(l.d)),
-    {h:160, straight:true, dots:true, dec:true,
-     tip:i=>`<b>${r1(bests[i])} kg</b> 1RM est.<br><small>${shortDate(S[i].d)} · ${S[i].sets.map(s=>fmtSet(S[i].ex,s)).join(', ')}</small>`});
+  else if(V.length<1) $('#lchart').innerHTML='<div class="empty">Sin registros en este periodo. Prueba con "Todo".</div>';
+  else drawChart($('#lchart'),[
+      {data:vb.map(r1), color:'#ffffff', line:false, dots:'all', r:V.length>40?2.4:3.2, op:.45},
+      {data:vr.map(r1), color:'#c8f560', fill:true, dots:'last'}
+    ], axisDates(V.map(l=>l.d)),
+    {h:170, straight:true, dec:true, xv:V.map(l=>fromKey(l.d).getTime()/86400000),
+     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día · récord ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
   $('#lhist').innerHTML=S.slice().reverse().map(l=>`<div class="hrow tap" onclick="openLiftSheet(null,'${l.id}')">
       <div class="hd">${shortDate(l.d)}</div>
       <div class="hi">${l.sets.map(s=>fmtSet(l.ex,s)).join(' · ')}${isPR(l)?'<span class="prtag">🏆 PR</span>':''}
@@ -2695,14 +2752,12 @@ function renderStrength(){
       <button class="ldel" onclick="event.stopPropagation();delLift('${l.id}')">✕</button></div>`).join('');
 
   $('#exgrid').innerHTML=used.map(n=>{
-    const b=liftsOf(n).map(sessBest), last=b[b.length-1], prv=b[b.length-2], cnt=b.length, ls=liftsOf(n), lastD=ls[ls.length-1].d, mx=maxSet(n);
-    const tr = prv==null ? '' : last>prv+1e-9 ? '<span class="is ok">↑ subiendo</span>'
-      : last<prv-1e-9 ? '<span class="is bad">↓ bajó vs anterior</span>' : '<span class="is">• igual que antes</span>';
+    const ls=liftsOf(n), b=ls.map(sessBest), cnt=b.length, lastD=ls[ls.length-1].d, mx=maxSet(n);
     return `<button class="excard ${n===liftSel?'on':''}" data-ex="${esc(n)}">
       <div class="en">${esc(n)}</div>
       <div class="ev">${r1(Math.max(...b))} <small>kg 1RM</small></div>
       ${mx?`<div class="em">Máx: ${fmtMax(n,mx.s)}</div>`:''}
-      <div class="es">${cnt} registro${cnt>1?'s':''} · ${shortDate(lastD)}</div>${tr}</button>`;
+      <div class="es">${cnt} registro${cnt>1?'s':''} · ${shortDate(lastD)}</div>${liftStatus(ls,b)}</button>`;
   }).join('');
   document.querySelectorAll('#exgrid .excard').forEach(b=>b.addEventListener('click',()=>{
     liftSel=b.dataset.ex; renderStrength(); $('#screen-strength').scrollTo({top:0,behavior:'smooth'});
