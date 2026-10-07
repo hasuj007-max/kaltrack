@@ -638,7 +638,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="kdelta"><span class="dbadge" id="ldelta">—</span><small id="ldeltalab"></small></div>
       </div>
       <div class="chart" id="lchart"></div>
-      <div class="legend"><span><i style="background:#ffffff80"></i>Cada registro</span><span><i style="background:var(--lime)"></i>Tu récord</span></div>
+      <div class="legend"><span><i style="background:#ffffff80"></i>Cada día que lo hiciste</span><span><i style="background:var(--cyan)"></i>Tendencia</span><span><i style="background:var(--lime)"></i>Tu récord</span></div>
       <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
       <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
       <button class="ballink" id="lhisttoggle" onclick="toggleLiftHist()">Ver registros ▾</button>
@@ -2741,19 +2741,24 @@ function renderStrength(){
   // con meses de registros la línea de cada sesión era ilegible (las semanas ligeras parecían caídas):
   // cada registro va como punto tenue y la línea es tu récord hasta esa fecha, que nunca baja
   const run=[]; bests.forEach((b,i)=>run.push(Math.max(b, i ? run[i-1] : 0)));
+  // tendencia: promedio de tus últimos 6 registros. A diferencia del récord, sube y baja según cómo vas.
+  // Comparado con la simulación de 3 años: 4 semanas por fecha brincaba casi como los puntos (ejercicios de
+  // 1 vez por semana = 4 registros); 6 registros brinca 3-4 veces menos y se atrasa ≤0.6 kg.
+  const trend=bests.map((_,i)=>{ const w=bests.slice(Math.max(0,i-5), i+1); return w.reduce((a,v)=>a+v,0)/w.length; });
   const span=S.length>1 ? daysBetween(S[0].d, S[S.length-1].d) : 0;
   $('#lrange').style.display = span>90 ? '' : 'none';
   let i0=0;
   if(lRange>0 && span>90){ const lim=new Date(today()); lim.setDate(lim.getDate()-lRange+1); const limk=dkey(lim); i0=S.findIndex(l=>l.d>=limk); if(i0<0) i0=S.length; }
-  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0);
+  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0), vt=trend.slice(i0);
   if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra este ejercicio otro día para ver tu línea de progreso 📈</div>';
   else if(V.length<1) $('#lchart').innerHTML='<div class="empty">Sin registros en este periodo. Prueba con "Todo".</div>';
   else drawChart($('#lchart'),[
       {data:vb.map(r1), color:'#ffffff', line:false, dots:'all', r:V.length>40?2.4:3.2, op:.45},
-      {data:vr.map(r1), color:'#c8f560', fill:true, dots:'last'}
+      {data:vr.map(r1), color:'#c8f560', dots:'last'},
+      {data:vt.map(r1), color:'#3fe0c5', fill:true, dots:'last'}
     ], axisDates(V.map(l=>l.d)),
     {h:170, straight:true, dec:true, xv:V.map(l=>fromKey(l.d).getTime()/86400000),
-     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día · récord ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
+     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día<br>Tendencia ${r1(vt[i])} · récord ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
   // historial oculto por defecto (con 3 años eran cientos de filas): se despliega y va de 20 en 20
   if(histFor!==liftSel){ histFor=liftSel; histOpen=false; histN=20; }
   $('#lhistwrap').style.display = histOpen ? 'block' : 'none';
