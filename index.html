@@ -638,8 +638,11 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <div class="legend"><span><i style="background:#ffffff80"></i>Cada registro</span><span><i style="background:var(--lime)"></i>Tu récord</span></div>
       <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
       <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
-      <div class="catlab">Historial · toca un registro para editarlo</div>
-      <div id="lhist"></div>
+      <button class="ballink" id="lhisttoggle" onclick="toggleLiftHist()">Ver registros ▾</button>
+      <div id="lhistwrap" style="display:none">
+        <div class="catlab">Historial · toca un registro para editarlo</div>
+        <div id="lhist"></div>
+      </div>
     </div>
     <h2 class="sect" id="exgridtitle">Tus ejercicios</h2>
     <div class="exgrid" id="exgrid"></div>
@@ -2693,6 +2696,9 @@ function liftStatus(ls, b){
   const pct=Math.round(b[last]/rec*100);
   return `<span class="is">• ${pct>=100 ? 'igualaste tu récord' : `a ${pct}% de tu récord`}</span>`;
 }
+let histOpen=false, histN=20, histFor=null;
+function toggleLiftHist(){ histOpen=!histOpen; histN=20; renderStrength(); }
+function moreLiftHist(){ histN+=20; renderStrength(); }
 let lRange=0;
 $('#lrange').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -2745,11 +2751,16 @@ function renderStrength(){
     ], axisDates(V.map(l=>l.d)),
     {h:170, straight:true, dec:true, xv:V.map(l=>fromKey(l.d).getTime()/86400000),
      tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día · récord ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
-  $('#lhist').innerHTML=S.slice().reverse().map(l=>`<div class="hrow tap" onclick="openLiftSheet(null,'${l.id}')">
+  // historial oculto por defecto (con 3 años eran cientos de filas): se despliega y va de 20 en 20
+  if(histFor!==liftSel){ histFor=liftSel; histOpen=false; histN=20; }
+  $('#lhistwrap').style.display = histOpen ? 'block' : 'none';
+  $('#lhisttoggle').textContent = histOpen ? 'Ocultar registros ▴' : `Ver registros (${S.length}) ▾`;
+  $('#lhist').innerHTML=!histOpen ? '' : S.slice().reverse().slice(0,histN).map(l=>`<div class="hrow tap" onclick="openLiftSheet(null,'${l.id}')">
       <div class="hd">${shortDate(l.d)}</div>
       <div class="hi">${l.sets.map(s=>fmtSet(l.ex,s)).join(' · ')}${isPR(l)?'<span class="prtag">🏆 PR</span>':''}
         <small>Volumen ${fmt(sessVol(l))} kg · 1RM est. ${r1(sessBest(l))} kg</small></div>
-      <button class="ldel" onclick="event.stopPropagation();delLift('${l.id}')">✕</button></div>`).join('');
+      <button class="ldel" onclick="event.stopPropagation();delLift('${l.id}')">✕</button></div>`).join('')
+    + (histOpen && S.length>histN ? `<button class="ballink" onclick="moreLiftHist()">Ver ${Math.min(20,S.length-histN)} más (quedan ${S.length-histN}) ▾</button>` : '');
 
   $('#exgrid').innerHTML=used.map(n=>{
     const ls=liftsOf(n), b=ls.map(sessBest), cnt=b.length, lastD=ls[ls.length-1].d, mx=maxSet(n);
