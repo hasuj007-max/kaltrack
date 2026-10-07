@@ -23,6 +23,8 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+/* sin zoom de doble toque (el desplazamiento y el zoom con dos dedos siguen igual) */
+html{touch-action:manipulation}
 body{
   background:#000;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,sans-serif;
@@ -210,7 +212,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .setrow .sn{width:30px;height:30px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--mut)}
 .setrow input{width:100%;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 8px;color:var(--txt);font:inherit;font-size:16px;font-weight:600;outline:none;text-align:center}
 .setrow input:focus{border-color:#c8f56066}
-.field select#lf-ex{font-size:15px}
+.field select#lf-ex{font-size:16px}
 .liftlive{font-size:12.5px;color:var(--mut);font-weight:500;margin:10px 2px 0;line-height:1.55}
 .liftlive b{color:var(--txt)} .liftlive .pr{color:var(--amber);font-weight:700}
 .hrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -298,7 +300,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 
 .searchbox{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line);border-radius:15px;padding:12px 14px;margin-bottom:12px}
 .searchbox svg{width:17px;height:17px;stroke:var(--dim);fill:none;stroke-width:2;flex-shrink:0}
-.searchbox input{flex:1;background:none;border:none;outline:none;color:var(--txt);font:inherit;font-size:15px}
+/* los campos van a 16px: con menos, el iPhone hace zoom solo al tocarlos */
+.searchbox input{flex:1;background:none;border:none;outline:none;color:var(--txt);font:inherit;font-size:16px}
 .searchbox input::placeholder{color:var(--dim)}
 .tabs{display:flex;background:var(--card2);border-radius:13px;padding:3px;margin-bottom:14px}
 .tabs button{flex:1;border:none;background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:600;padding:8px;border-radius:10px;cursor:pointer}
@@ -319,7 +322,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:6px}
-.field input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px 14px;color:var(--txt);font:inherit;font-size:15px;outline:none}
+.field input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px 14px;color:var(--txt);font:inherit;font-size:16px;outline:none}
 .field input:focus{border-color:#c8f56066}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
@@ -367,7 +370,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:3px;gap:2px}
 .seg button{flex:1;border:none;background:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;padding:9px 2px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
 .seg button.on{background:var(--lime);color:#0a0a0a;font-weight:700}
-.field select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px 14px;color:var(--txt);font:inherit;font-size:14px;outline:none;-webkit-appearance:none;appearance:none}
+.field select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px 14px;color:var(--txt);font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238d8d96' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center;padding-right:38px}
 .obcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:6px}
 .obcard .oblab{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase;margin-bottom:9px}
@@ -3168,6 +3171,20 @@ function renderAll(){
 window.addEventListener('resize',()=>{ if(curScreen==='progress') renderProgress(); if(curScreen==='strength') renderStrength(); if(curScreen==='body') renderBody(); });
 // el navegador puede desplazar el contenedor overflow:hidden al enfocar inputs de un sheet
 const appEl=document.getElementById('app');
+/* App instalada en iPhone (iOS 26): la página mide la pantalla MENOS la barra de estado (812 de 874 en un
+   iPhone 17 Pro) y abajo quedaba una franja negra: la app se veía más chica que la pantalla. Ni 100dvh ni
+   position:fixed lo arreglan (probado en el simulador). Si a la página le falta poco para la pantalla
+   (≤100 pt, lo de una barra de estado), la app toma el alto real. No se usa env(safe-area-inset-top) para
+   decidir: al arrancar vale 0 y iOS lo corrige medio segundo después SIN avisar con 'resize'. Con una
+   ventana mucho más chica (iPad en pantalla dividida) no se toca. */
+if(navigator.standalone){
+  const fitApp=()=>{
+    const full=matchMedia('(orientation: landscape)').matches ? screen.width : screen.height;
+    const gap=full-innerHeight;
+    appEl.style.height = gap>=0 && gap<=100 ? full+'px' : '';
+  };
+  fitApp(); addEventListener('resize',fitApp); addEventListener('orientationchange',()=>setTimeout(fitApp,300));
+}
 appEl.addEventListener('scroll',()=>{appEl.scrollTop=0;appEl.scrollLeft=0;});
 appEl.scrollTop=0;
 attachStripSwipe();
