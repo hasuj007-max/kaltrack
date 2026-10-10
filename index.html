@@ -401,6 +401,8 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .tgl.on::after{left:23px;background:#0a0a0a}
 .toastwrap{position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center;z-index:90;pointer-events:none}
 .toast{background:var(--lime);color:#0a0a0a;font-size:13px;font-weight:700;padding:10px 18px;border-radius:99px;box-shadow:0 8px 28px #c8f56040;animation:toastin 2.4s ease forwards}
+.toast.act{display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px;pointer-events:auto;animation-duration:5s}
+.toast.act button{background:#0a0a0a;color:var(--lime);border:0;border-radius:99px;padding:7px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 @keyframes toastin{0%{opacity:0;transform:translateY(-14px)}10%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-10px)}}
 .confetti{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;opacity:.95;animation:confettifall 1.4s ease-in forwards}
 @keyframes confettifall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(540px) rotate(560deg);opacity:0}}
@@ -1320,10 +1322,13 @@ function dayTotals(k){
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function hasEntries(k){ const l=getLog(k); return l.foods.length+l.ex.length>0; }
 
-function toast(msg){
+// con `undo`, el aviso trae un botón "Deshacer" y dura más
+function toast(msg, undo){
   const w=$('#toastwrap'); w.innerHTML='';
-  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
-  w.appendChild(t); setTimeout(()=>t.remove(),2500);
+  const t=document.createElement('div'); t.className='toast'+(undo?' act':''); t.textContent=msg;
+  if(undo){ const b=document.createElement('button'); b.textContent='Deshacer';
+    b.onclick=()=>{ t.remove(); undo(); }; t.appendChild(b); }
+  w.appendChild(t); setTimeout(()=>t.remove(), undo?5000:2500);
 }
 
 /* cuenta ascendente para números del gauge */
@@ -1383,6 +1388,7 @@ function closeSheets(){
   document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));
   $('#fab').classList.remove('x');
   editingEntry=null; editingLift=null;
+  setTimeout(checkNewDay);   // si cambió el día con la hoja abierta, se aplica al cerrarla
 }
 function toggleFab(){
   if($('#sheet-fab').classList.contains('on')){closeSheets();}
@@ -1554,8 +1560,11 @@ function repeatYesterday(){
   ensureLog(k).foods.push(...yl.foods.map(f=>({...f})));
   save(); renderAll(); toast('Comidas de ayer copiadas ↻');
 }
+// un toque en la ✕ borraba sin preguntar y sin vuelta atrás (fácil de tocar sin querer al deslizar)
 function delEntry(k,type,i){
-  ensureLog(k)[type].splice(i,1); save(); renderAll();
+  const [gone]=ensureLog(k)[type].splice(i,1); if(!gone) return;
+  save(); renderAll();
+  toast('Registro borrado', ()=>{ const a=ensureLog(k)[type]; a.splice(Math.min(i,a.length),0,gone); save(); renderAll(); toast('Recuperado ✓'); });
 }
 
 /* ================== COMIDA ================== */
@@ -1794,6 +1803,7 @@ function startEditFood(id){
   $('#cf-save').textContent='Actualizar alimento';
 }
 function delCustomFood(id){
+  const f=DB.customFoods.find(x=>x.id===id); if(!f || !confirm(`¿Borrar "${f.n}" de tus alimentos? Lo que ya registraste no cambia.`)) return;
   DB.customFoods=DB.customFoods.filter(x=>x.id!==id); save(); renderSettings(); toast('Alimento eliminado');
 }
 
@@ -1860,13 +1870,15 @@ function saveCustomEx(){
   save(); toast('Ejercicio guardado'); exTab('search'); renderSettings();
 }
 function delCustomEx(id){
+  const x=DB.customEx.find(e=>e.id===id); if(!x || !confirm(`¿Borrar "${x.n}" de tus ejercicios? Lo que ya registraste no cambia.`)) return;
   DB.customEx=DB.customEx.filter(x=>x.id!==id); save(); renderSettings(); toast('Ejercicio eliminado');
 }
 
 /* ================== PESO ================== */
 function openWeightSheet(){
   closeSheets(); openSheet('sheet-weight');
-  $('#w-val').value = DB.profile.weight ?? '';
+  $('#w-val').value='';   // vacío con el último en gris: si salía lleno, guardar sin cambiar registraba el peso viejo como de hoy
+  $('#w-val').placeholder = DB.profile.weight ? `Último: ${DB.profile.weight}` : 'Ej. 72.5';
   $('#w-date').value = dkey(today());
   renderWeightHist();
 }
@@ -2042,7 +2054,9 @@ function rangeDays(from,to){
 function periodStats(days){
   const g=DB.goals, tk=dkey(today());
   const done=days.filter(d=>hasEntries(dkey(d)));
-  const full=done.filter(d=>dkey(d)!==tk), use=full.length ? full : done;
+  // promedios solo con días que tienen comida: un día con solo ejercicio contaba como 0 kcal y bajaba el promedio
+  const ate=done.filter(d=>getLog(dkey(d)).foods.length);
+  const full=ate.filter(d=>dkey(d)!==tk), use=full.length ? full : ate;
   let kcal=0,p=0,c=0,f=0,burn=0,onT=0,best=null;
   done.forEach(d=>{ burn+=dayTotals(dkey(d)).burn; });
   use.forEach(d=>{
@@ -2164,9 +2178,12 @@ function renderCalBars(){
       buckets.push({days:ch, lab:MESES[first.getMonth()], full:`${MESES[first.getMonth()]} ${first.getFullYear()}`});
     }
   }
-  const vals=buckets.map(b=>{ let s=0,c=0;
-    b.days.forEach(d=>{ const k=dkey(d); if(hasEntries(k)){ s+=dayTotals(k).kcal; c++; } });
-    return c ? s/c : null; });
+  // promedio de cada barra con los días que tienen comida (sin hoy, que va a medias, si hay más días)
+  const tk=dkey(today());
+  const vals=buckets.map(b=>{
+    const ate=b.days.filter(d=>getLog(dkey(d)).foods.length), done=ate.filter(d=>dkey(d)!==tk);
+    const use = b.days.length>1 && done.length ? done : ate;
+    return use.length ? use.reduce((s,d)=>s+dayTotals(dkey(d)).kcal,0)/use.length : null; });
   const host=$('#cchart');
   if(!vals.some(v=>v)){ host.innerHTML='<div class="empty">Agrega comidas para ver tus calorías 🔥</div>'; return; }
   let hi=-1;
@@ -3207,6 +3224,17 @@ function renderAll(){
   if(curScreen==='body') renderBody();
   if(curScreen==='settings') renderSettings();
 }
+// La app puede quedar abierta (o en segundo plano en el iPhone) de un día para otro. Antes, al volver en la mañana
+// seguía en el día anterior y lo que registrabas se guardaba en ayer. Si estabas viendo "hoy", pasa al nuevo hoy.
+let shownToday=dkey(today());
+function checkNewDay(){
+  const t=dkey(today()); if(t===shownToday || document.querySelector('.sheet.on')) return;   // con una hoja abierta, al cerrarla
+  if(dkey(selDate)===shownToday){ selDate=today(); stripAnchor=today(); }
+  shownToday=t; renderAll();
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') checkNewDay(); });
+window.addEventListener('pageshow',checkNewDay); window.addEventListener('focus',checkNewDay);
+setInterval(checkNewDay, 60000);
 window.addEventListener('resize',()=>{ if(curScreen==='progress') renderProgress(); if(curScreen==='strength') renderStrength(); if(curScreen==='body') renderBody(); });
 // el navegador puede desplazar el contenedor overflow:hidden al enfocar inputs de un sheet
 const appEl=document.getElementById('app');
@@ -3368,6 +3396,9 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){ if(pulled){ clearTimeout(timer); subir(); } }
   else if(Date.now()-lastPull>60000) bajar().then(()=>subir()).catch(()=>{});
 });
+
+// al volver el internet sin salir de la app: leer la nube si no se pudo al abrir, y subir lo pendiente
+window.addEventListener('online',()=>{ if(!user) return; (pulled ? subir() : bajar().then(()=>subir())).catch(()=>{}); });
 
 window.Nube={
   programar(){ if(!user || !pulled) return; clearTimeout(timer); timer=setTimeout(()=>subir(), 2500); },

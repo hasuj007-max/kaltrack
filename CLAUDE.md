@@ -82,6 +82,13 @@ Contador de calorías, peso, medidas y pesas. Es la app personal del usuario, in
 - `liftStatus` da récord, estancado (3+ registros y 14+ días sin récord) o "a X% del récord".
 - `LIB` = [nombre, grupo, equipo, foto, bwf]. Un ejercicio nuevo lleva su foto en `ex/` y en `EX_IMGS` de `sw.js`.
 
+## Comportamientos que ya se corrigieron (no los rompas)
+- `checkNewDay`: si la app queda abierta de un día a otro y estabas viendo "hoy", pasa al nuevo hoy. Si hay una hoja abierta, espera a que se cierre.
+- Los promedios y las barras de Progreso cuentan solo días **con comida**. Un día con solo ejercicio no es "0 kcal".
+- Los campos para registrar salen vacíos y lo anterior va en gris: pesas, peso y medidas. Así, guardar sin escribir nada nunca registra un dato viejo como si fuera de hoy.
+- Borrar un registro de comida o ejercicio muestra "Deshacer" (`toast(msg, undo)`). Borrar pesajes, pesas, medidas y alimentos propios pide confirmación.
+- Pruebas para repetir tras un cambio grande: cargar la simulación de 3 años y recorrer todas las pantallas y rangos buscando "NaN", "undefined" o "Infinity" en textos y atributos SVG. Después, el flujo completo de un usuario nuevo: Borrar todo → registro inicial → agregar, editar y borrar → exportar e importar.
+
 ## Decisiones del usuario (no las reviertas sin que lo pida)
 - Nada de fibra, azúcar, sodio ni grasa saturada: los quitó porque "no me agradó".
 - Garmin se retiró en oct-2026. Si lo vuelve a pedir: el API oficial es solo para empresas, y la vía no oficial con GitHub Actions llegaba 2–6 h tarde.
