@@ -215,6 +215,9 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
 .setrow .sn{width:30px;height:30px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--mut)}
 .setrow input{width:100%;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 8px;color:var(--txt);font:inherit;font-size:16px;font-weight:600;outline:none;text-align:center}
 .setrow input:focus{border-color:#c8f56066}
+.setrow input::placeholder{color:var(--mut);font-weight:500}
+.lflast{font-size:13px;font-weight:500;color:#c9c9cf;margin:0 2px 10px;line-height:1.45}
+.lflast b{color:var(--txt);font-weight:700} .lflast small{color:var(--mut);font-size:12px}
 .field select#lf-ex{font-size:16px}
 .liftlive{font-size:12.5px;color:var(--mut);font-weight:500;margin:10px 2px 0;line-height:1.55}
 .liftlive b{color:var(--txt)} .liftlive .pr{color:var(--amber);font-weight:700}
@@ -617,7 +620,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <li><b>1RM estimado:</b> el peso máximo que podrías levantar 1 sola vez, calculado de tu mejor serie. Sirve para comparar días aunque cambies peso y repeticiones: 60×10 y 70×5 dan casi lo mismo.</li>
         <li><b>🏆 Récord:</b> cuando tu 1RM de hoy supera tu mejor marca anterior en ese ejercicio.</li>
         <li><b>Volumen:</b> peso × repeticiones de todas tus series sumadas; es el trabajo total que hiciste.</li>
-        <li><b>Para progresar:</b> al registrar te precargo lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
+        <li><b>Para progresar:</b> al registrar ves en gris lo que hiciste la última vez; intenta subir un poco el peso o una repetición.</li>
         <li><b>Peso corporal</b> (dominadas, fondos, lagartijas): escribe solo el peso extra (0 si no cargas nada). La app suma la parte de tu peso que de verdad mueves: en una lagartija ~64%, en una dominada ~95%.</li>
       </ul>
     </details>
@@ -921,6 +924,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
       <div class="field"><label>Fecha</label><input type="date" id="lf-date"></div>
       <div class="lfprev" id="lf-prev" style="display:none"></div>
       <div class="lfmax" id="lf-max" style="display:none"></div>
+      <div class="lflast" id="lf-last" style="display:none"></div>
       <div class="sethint">Cada fila es una serie: el peso y cuántas repeticiones hiciste.</div>
       <div class="setshead"><span>Serie</span><span id="lf-kghead">Kg</span><span>Reps</span><span></span></div>
       <div id="lf-sets"></div>
@@ -2558,7 +2562,7 @@ function isPR(l){
 }
 const myExNames=()=>[...new Set([...DB.liftEx, ...DB.lifts.map(l=>l.ex)])].filter(n=>!LIB_BY[n]);
 function liftNames(){ return [...LIB.map(x=>x.n), ...myExNames()]; }
-let liftSel=null, liftSets=[], editingLift=null;
+let liftSel=null, liftSets=[], liftGhost=[], editingLift=null;
 
 function liftOptions(){
   let h='';
@@ -2580,14 +2584,16 @@ function openLiftSheet(ex, editId){
   $('#lf-newwrap').style.display = cur==='__new' ? 'block' : 'none'; $('#lf-new').value='';
   $('#lf-date').value = editL ? editL.d : dkey(today());
   $('#lift-title').textContent = editL ? 'Editar levantamiento' : 'Registrar levantamiento';
-  if(editL) liftSets=editL.sets.map(s=>({...s})); else prefillSets(cur);
+  if(editL){ liftSets=editL.sets.map(s=>({...s})); liftGhost=[]; } else prefillSets(cur);
   renderSets();
   if(cur==='__new') setTimeout(()=>$('#lf-new').focus(),350);
 }
-// se precargan las series del último registro de ese ejercicio para que solo ajustes
+// las series salen vacías con lo de la última vez en gris como guía. Antes salían llenas y, si guardabas
+// sin cambiar nada, quedaba registrado lo de la vez pasada como si fuera de hoy.
 function prefillSets(ex){
   const ls=liftsOf(ex), last=ls[ls.length-1];
-  liftSets = last ? last.sets.map(s=>({...s})) : [{kg:'',reps:''}];
+  liftGhost = last ? last.sets.map(s=>({...s})) : [];
+  liftSets = (liftGhost.length ? liftGhost : [0]).map(()=>({kg:'',reps:''}));
 }
 $('#lf-ex').addEventListener('change',()=>{
   const v=$('#lf-ex').value;
@@ -2610,17 +2616,17 @@ function renderSets(){
   $('#lf-kghead').textContent = bw ? 'Kg extra' : 'Kg';
   $('#lf-sets').innerHTML=liftSets.map((s,i)=>`<div class="setrow">
       <span class="sn">${i+1}</span>
-      <input type="number" inputmode="decimal" step="0.5" placeholder="${bw?'0':'kg'}" value="${s.kg}" data-i="${i}" data-f="kg">
-      <input type="number" inputmode="numeric" placeholder="reps" value="${s.reps}" data-i="${i}" data-f="reps">
+      <input type="number" inputmode="decimal" step="0.5" placeholder="${liftGhost[i] ? r1(+liftGhost[i].kg||0) : bw?'0':'kg'}" value="${s.kg}" data-i="${i}" data-f="kg">
+      <input type="number" inputmode="numeric" placeholder="${liftGhost[i] ? liftGhost[i].reps : 'reps'}" value="${s.reps}" data-i="${i}" data-f="reps">
       <button class="ldel" onclick="delSet(${i})" ${liftSets.length<2?'style="visibility:hidden"':''}>✕</button>
     </div>`).join('');
   document.querySelectorAll('#lf-sets input').forEach(inp=>inp.addEventListener('input',()=>{
     const v=parseFloat(inp.value); liftSets[+inp.dataset.i][inp.dataset.f]=isNaN(v)?'':v; updLiftLive();
   }));
-  renderLiftPrev(); renderLiftMax(); updLiftLive();
+  renderLiftPrev(); renderLiftMax(); renderLiftLast(); updLiftLive();
 }
 function addSet(){ const l=liftSets[liftSets.length-1]||{kg:'',reps:''}; liftSets.push({...l}); renderSets(); }
-function delSet(i){ liftSets.splice(i,1); renderSets(); }
+function delSet(i){ liftSets.splice(i,1); liftGhost.splice(i,1); renderSets(); }
 function currentLiftEx(){ const v=$('#lf-ex').value; return v==='__new' ? $('#lf-new').value.trim() : v; }
 function updLiftLive(){
   const ex=currentLiftEx(), valid=liftSets.filter(s=>validSet(ex,s));
@@ -2644,10 +2650,20 @@ function renderLiftMax(){
   el.style.display='block';
   el.innerHTML=`📌 Tu máximo: <b>${fmtMax(ex,mx.s)}</b> <small>· ${shortDate(mx.d)}</small>`;
 }
+// lo que hizo la última vez (lo mismo que sale en gris en las series)
+function renderLiftLast(){
+  const ex=currentLiftEx(), ls=ex && !editingLift ? liftsOf(ex) : [], last=ls[ls.length-1], el=$('#lf-last');
+  if(!last){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML=`↩️ La vez pasada <small>(${shortDate(last.d)})</small>: <b>${last.sets.map(s=>fmtSet(ex,s)).join(' · ')}</b>`;
+}
 function saveLift(){
   const ex=currentLiftEx(), d=$('#lf-date').value, wasEdit=!!editingLift;
   if(!ex){ toast('Escribe el nombre del ejercicio'); return; }
   if(!d){ toast('Pon la fecha'); return; }
+  // una serie a medias (peso sin reps o al revés) se perdía sin aviso: con lo gris es fácil dejar una sin escribir
+  const half=liftSets.findIndex(s=>{ const k=s.kg!=='', r=s.reps!==''; return isBW(ex) ? k&&!r : k!==r; });
+  if(half>=0){ toast(`Serie ${half+1}: ${liftSets[half].reps==='' ? 'faltan las repeticiones' : 'falta el peso'}`); return; }
   const sets=liftSets.filter(s=>validSet(ex,s)).map(s=>({kg:+s.kg||0, reps:Math.round(+s.reps)}));
   if(!sets.length){ toast(isBW(ex) ? 'Agrega al menos una serie con reps' : 'Agrega al menos una serie con kg y reps'); return; }
   if(!LIB_BY[ex] && !DB.liftEx.includes(ex)) DB.liftEx.push(ex);

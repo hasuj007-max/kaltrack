@@ -78,6 +78,7 @@ Contador de calorías, peso, medidas y pesas. Es la app personal del usuario, in
   | Fondos en banco | .6 |
   | Piernas colgado | .34 |
 - La gráfica tiene tres líneas: puntos por día, tendencia (promedio de los últimos 6 registros) y récord acumulado. Cada línea se apaga tocando su etiqueta (`kaltrack_lineas`). Rangos: 3M, 6M, 1A y Todo.
+- Al registrar, las series salen **vacías**, con lo de la última vez en gris (`liftGhost` como placeholder) y la línea "La vez pasada". Ya no se precargan: si guardaba sin cambiar nada, se registraba lo viejo como si fuera de hoy. Una serie a medias (peso sin reps o reps sin peso) no se guarda y avisa.
 - `liftStatus` da récord, estancado (3+ registros y 14+ días sin récord) o "a X% del récord".
 - `LIB` = [nombre, grupo, equipo, foto, bwf]. Un ejercicio nuevo lleva su foto en `ex/` y en `EX_IMGS` de `sw.js`.
 
