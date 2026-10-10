@@ -4,7 +4,7 @@
   },
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "firestore.rules", "**/.*", "**/node_modules/**", "*.md"],
+    "ignore": ["firebase.json", "firestore.rules", "**/.*", "**/.*/**", ".git/**", ".claude/**", "respaldos/**", "**/node_modules/**", "*.md"],
     "headers": [
       {
         "//": "El service worker nunca se cachea: si no, una versión vieja queda pegada.",

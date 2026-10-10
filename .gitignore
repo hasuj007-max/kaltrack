@@ -1,2 +1,6 @@
 # caché local del CLI de Firebase
 .firebase/
+# respaldos reales del usuario: privados, nunca al repo
+respaldos/
+# permisos locales de Claude Code
+.claude/settings.local.json
