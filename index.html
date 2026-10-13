@@ -646,7 +646,7 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="kdelta"><span class="dbadge" id="ldelta">—</span><small id="ldeltalab"></small></div>
       </div>
       <div class="chart" id="lchart"></div>
-      <div class="legend" id="lleg"><button class="lgbtn" data-s="dots"><i style="background:#ffffff80"></i>Cada día que lo hiciste</button><button class="lgbtn" data-s="trend"><i style="background:var(--cyan)"></i>Tendencia</button><button class="lgbtn" data-s="rec"><i style="background:var(--lime)"></i>Tu récord</button></div>
+      <div class="legend" id="lleg"><button class="lgbtn" data-s="day"><i style="background:var(--cyan)"></i>Lo que levantaste cada día</button><button class="lgbtn" data-s="rec"><i style="background:var(--lime)"></i>Tu récord</button></div>
       <div class="lghint">Toca una para mostrarla u ocultarla</div>
       <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
       <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
@@ -1981,7 +1981,7 @@ function drawChart(host, series, xlabels, opts={}){
       svg+=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".22"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>`;
       svg+=`<path d="${path} L${pts[pts.length-1][0]},${H-padB} L${pts[0][0]},${H-padB} Z" fill="url(#${gid})"/>`;
     }
-    if(path && s.line!==false) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
+    if(path && s.line!==false) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="${s.w||2.4}" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
     const dots = s.dots ?? (opts.dots ? 'all' : false);
     if(dots || pts.length===1) pts.forEach((p,i)=>{
       const last=i===pts.length-1;
@@ -2742,12 +2742,13 @@ function toggleLiftHist(){ histOpen=!histOpen; histN=20; renderStrength(); }
 function moreLiftHist(){ histN+=20; renderStrength(); }
 // qué líneas se ven en la gráfica de fuerza (preferencia de este teléfono)
 const LLKEY='kaltrack_lineas';
-let lLines={dots:true, trend:true, rec:true};
-try{ Object.assign(lLines, JSON.parse(localStorage.getItem(LLKEY)||'{}')); }catch(e){}
+let lLines={day:true, rec:true};
+try{ const st=JSON.parse(localStorage.getItem(LLKEY)||'{}'); lLines={day:st.day??true, rec:st.rec??true};
+  if(!lLines.day && !lLines.rec) lLines={day:true, rec:true}; }catch(e){}
 $('#lleg').addEventListener('click',e=>{
   const b=e.target.closest('.lgbtn'); if(!b) return;
   const k=b.dataset.s, next=Object.assign({}, lLines, {[k]:!lLines[k]});
-  if(!next.dots && !next.trend && !next.rec){ toast('Deja al menos una visible'); return; }
+  if(!next.day && !next.rec){ toast('Deja al menos una visible'); return; }
   lLines=next;
   try{ localStorage.setItem(LLKEY, JSON.stringify(lLines)); }catch(e){}
   renderStrength();
@@ -2788,28 +2789,24 @@ function renderStrength(){
   const diff = S.length>1 ? r1(bests[bests.length-1]-bests[0]) : null;
   setDelta($('#ldelta'), diff, diff==null?'':Math.abs(diff)+' kg', false);
   $('#ldeltalab').textContent = S.length>1 ? `última vs ${shortDate(S[0].d)}` : 'primer registro';
-  // con meses de registros la línea de cada sesión era ilegible (las semanas ligeras parecían caídas):
-  // cada registro va como punto tenue y la línea es tu récord hasta esa fecha, que nunca baja
+  // dos líneas: lo que levantaste cada día (baja si cargas menos, sube si cargas más) y tu récord hasta esa
+  // fecha, que nunca baja. Hubo una "tendencia" = promedio de los últimos 6 registros, pero confundía: un día
+  // flojo la seguía jalando abajo aunque el siguiente levantaras más (el usuario la pidió quitar, oct-2026).
   const run=[]; bests.forEach((b,i)=>run.push(Math.max(b, i ? run[i-1] : 0)));
-  // tendencia: promedio de tus últimos 6 registros. A diferencia del récord, sube y baja según cómo vas.
-  // Comparado con la simulación de 3 años: 4 semanas por fecha brincaba casi como los puntos (ejercicios de
-  // 1 vez por semana = 4 registros); 6 registros brinca 3-4 veces menos y se atrasa ≤0.6 kg.
-  const trend=bests.map((_,i)=>{ const w=bests.slice(Math.max(0,i-5), i+1); return w.reduce((a,v)=>a+v,0)/w.length; });
   const span=S.length>1 ? daysBetween(S[0].d, S[S.length-1].d) : 0;
   $('#lrange').style.display = span>90 ? '' : 'none';
   let i0=0;
   if(lRange>0 && span>90){ const lim=new Date(today()); lim.setDate(lim.getDate()-lRange+1); const limk=dkey(lim); i0=S.findIndex(l=>l.d>=limk); if(i0<0) i0=S.length; }
-  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0), vt=trend.slice(i0);
+  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0), many=V.length>40;
   document.querySelectorAll('#lleg .lgbtn').forEach(b=>b.classList.toggle('off', !lLines[b.dataset.s]));
   if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra este ejercicio otro día para ver tu línea de progreso 📈</div>';
   else if(V.length<1) $('#lchart').innerHTML='<div class="empty">Sin registros en este periodo. Prueba con "Todo".</div>';
   else drawChart($('#lchart'),[
-      lLines.dots && {data:vb.map(r1), color:'#ffffff', line:false, dots:'all', r:V.length>40?2.4:3.2, op:.45},
-      lLines.rec && {data:vr.map(r1), color:'#c8f560', dots:'last', fill:!lLines.trend},
-      lLines.trend && {data:vt.map(r1), color:'#3fe0c5', fill:true, dots:'last'}
+      lLines.rec && {data:vr.map(r1), color:'#c8f560', dots:'last', fill:!lLines.day},
+      lLines.day && {data:vb.map(r1), color:'#3fe0c5', fill:true, dots:many?'last':'all', w:many?1.6:2.4}
     ].filter(Boolean), axisDates(V.map(l=>l.d)),
     {h:170, straight:true, dec:true, xv:V.map(l=>fromKey(l.d).getTime()/86400000),
-     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día<br>Tendencia ${r1(vt[i])} · récord ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
+     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día<br>Tu récord: ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
   // historial oculto por defecto (con 3 años eran cientos de filas): se despliega y va de 20 en 20
   if(histFor!==liftSel){ histFor=liftSel; histOpen=false; histN=20; }
   $('#lhistwrap').style.display = histOpen ? 'block' : 'none';
