@@ -646,10 +646,10 @@ h1.title small{display:block;font-size:14.5px;font-weight:500;color:var(--mut);l
         <div class="kdelta"><span class="dbadge" id="ldelta">—</span><small id="ldeltalab"></small></div>
       </div>
       <div class="chart" id="lchart"></div>
-      <div class="legend" id="lleg"><button class="lgbtn" data-s="day"><i style="background:var(--cyan)"></i>Lo que levantaste cada día</button><button class="lgbtn" data-s="rec"><i style="background:var(--lime)"></i>Tu récord</button></div>
+      <div class="legend" id="lleg"><button class="lgbtn" data-s="day"><i style="background:var(--cyan)"></i>Lo que levantaste cada día</button><button class="lgbtn" data-s="rec"><i style="background:var(--lime)"></i>Tu récord</button><button class="lgbtn" data-s="vol"><i style="background:#a78bfa"></i>Volumen por sesión</button></div>
       <div class="lghint">Toca una para mostrarla u ocultarla</div>
-      <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
-      <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley)</span></div>
+      <div class="seg wseg" id="lrange" style="margin-top:10px"><button data-r="30">1 mes</button><button data-r="90">3 meses</button><button data-r="180">6 meses</button><button data-r="365">1 año</button><button data-r="0" class="on">Todo</button></div>
+      <div class="legend"><span>1RM estimado = lo máximo que podrías levantar 1 vez (fórmula de Epley). Volumen = peso × repeticiones de todas tus series ese día (línea punteada, su escala va a la izquierda).</span></div>
       <button class="ballink" id="lhisttoggle" onclick="toggleLiftHist()">Ver registros ▾</button>
       <div id="lhistwrap" style="display:none">
         <div class="catlab">Historial · toca un registro para editarlo</div>
@@ -1934,28 +1934,37 @@ function smoothPath(pts){
 // series: [{data:[num], color, fill}] ; xlabels: [str] ; tip(i)->html
 function drawChart(host, series, xlabels, opts={}){
   const W=host.clientWidth||340, H=opts.h||190;
-  const all=series.flatMap(s=>s.data).filter(v=>v!=null && isFinite(v));
+  // series con y2:true llevan su propia escala, rotulada a la izquierda (el volumen en miles de kg junto al 1RM)
+  const y2=series.some(s=>s.y2) && series.some(s=>!s.y2);
+  const vals=list=>list.flatMap(s=>s.data).filter(v=>v!=null && isFinite(v));
+  const all=vals(y2 ? series.filter(s=>!s.y2) : series);
   const hl=(opts.hlines||[]).filter(h=>h.v!=null && isFinite(h.v));
   if(all.length) hl.forEach(h=>all.push(h.v));
   if(!all.length || xlabels.length===0){
     host.innerHTML=`<div class="empty">${opts.empty||'Sin datos todavía'}</div>`; return;
   }
-  let min=Math.min(...all), max=Math.max(...all);
-  if(min===max){min-=1;max+=1;}
-  const span=max-min; min-=span*0.12; max+=span*0.18;
-  if(opts.zeroMin) min=0;
-  const padL=10,padR=40,padT=12,padB=24;
+  const scale=(a,zero)=>{ let lo=Math.min(...a), hi=Math.max(...a);
+    if(lo===hi){lo-=1;hi+=1;}
+    const sp=hi-lo; lo-=sp*0.12; hi+=sp*0.18;
+    return [zero?0:lo, hi]; };
+  const [min,max]=scale(all, opts.zeroMin), a2=y2 ? vals(series.filter(s=>s.y2)) : [];
+  const [min2,max2]=a2.length ? scale(a2) : [0,1], c2=y2 ? series.find(s=>s.y2).color : null;
+  const padL=y2?36:10,padR=40,padT=12,padB=24;
   const n=xlabels.length;
   const xv=opts.xv, x0=xv?Math.min(...xv):0, x1=xv?Math.max(...xv):0;
   const X=i=> xv ? padL+(W-padL-padR)*(x1===x0?0.5:(xv[i]-x0)/(x1-x0))
                  : padL+(W-padL-padR)*(n===1?0.5:i/(n-1));
   const Y=v=> padT+(H-padT-padB)*(1-(v-min)/(max-min));
+  const Y2=v=> padT+(H-padT-padB)*(1-(v-min2)/(max2-min2));
+  series.forEach(s=>{ s._Y = y2 && s.y2 ? Y2 : Y; });
+  const short=v=> max2>=1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));   // toda la escala en "k" si llega a miles
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
   // grid + labels Y
   for(let g=0;g<=3;g++){
     const v=min+(max-min)*g/3, y=Y(v);
     svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#ffffff0a" stroke-width="1"/>`;
     svg+=`<text x="${W-padR+10}" y="${y+3.5}" font-size="10" font-weight="500" fill="#5b5b63">${opts.dec?Math.round(v*10)/10:fmt(v)}</text>`;
+    if(y2) svg+=`<text x="2" y="${y+3.5}" font-size="10" font-weight="600" fill="${c2}" opacity=".85">${short(min2+(max2-min2)*g/3)}</text>`;
   }
   // labels X (~5)
   // con eje por fecha las etiquetas pueden quedar juntas: se salta la que choca y la primera va alineada a la izquierda
@@ -1973,7 +1982,7 @@ function drawChart(host, series, xlabels, opts={}){
   });
   // series
   series.forEach((s,si)=>{
-    const pts=s.data.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
+    const pts=s.data.map((v,i)=>v==null?null:[X(i),s._Y(v)]).filter(Boolean);
     if(!pts.length) return;
     const path=pts.length<2 ? '' : opts.straight ? 'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L') : smoothPath(pts);
     if(s.fill && pts.length>1){
@@ -1981,7 +1990,7 @@ function drawChart(host, series, xlabels, opts={}){
       svg+=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".22"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>`;
       svg+=`<path d="${path} L${pts[pts.length-1][0]},${H-padB} L${pts[0][0]},${H-padB} Z" fill="url(#${gid})"/>`;
     }
-    if(path && s.line!==false) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="${s.w||2.4}" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
+    if(path && s.line!==false) svg+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="${s.w||2.4}"${s.dash?` stroke-dasharray="${s.dash}"`:''} stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${s.color}66)"/>`;
     const dots = s.dots ?? (opts.dots ? 'all' : false);
     if(dots || pts.length===1) pts.forEach((p,i)=>{
       const last=i===pts.length-1;
@@ -2009,7 +2018,7 @@ function drawChart(host, series, xlabels, opts={}){
     series.forEach((s,si)=>{
       const dot=svgEl.querySelector('#dot'+si), v=s.data[best];
       if(v==null){dot.style.display='none';return;}
-      dot.setAttribute('cx',px);dot.setAttribute('cy',Y(v));dot.style.display='block';
+      dot.setAttribute('cx',px);dot.setAttribute('cy',s._Y(v));dot.style.display='block';
     });
     tip.innerHTML=opts.tip?opts.tip(best):'';
     tip.style.display='block';
@@ -2742,13 +2751,13 @@ function toggleLiftHist(){ histOpen=!histOpen; histN=20; renderStrength(); }
 function moreLiftHist(){ histN+=20; renderStrength(); }
 // qué líneas se ven en la gráfica de fuerza (preferencia de este teléfono)
 const LLKEY='kaltrack_lineas';
-let lLines={day:true, rec:true};
-try{ const st=JSON.parse(localStorage.getItem(LLKEY)||'{}'); lLines={day:st.day??true, rec:st.rec??true};
-  if(!lLines.day && !lLines.rec) lLines={day:true, rec:true}; }catch(e){}
+let lLines={day:true, rec:true, vol:true};
+try{ const st=JSON.parse(localStorage.getItem(LLKEY)||'{}'); lLines={day:st.day??true, rec:st.rec??true, vol:st.vol??true};
+  if(!lLines.day && !lLines.rec && !lLines.vol) lLines={day:true, rec:true, vol:true}; }catch(e){}
 $('#lleg').addEventListener('click',e=>{
   const b=e.target.closest('.lgbtn'); if(!b) return;
   const k=b.dataset.s, next=Object.assign({}, lLines, {[k]:!lLines[k]});
-  if(!next.day && !next.rec){ toast('Deja al menos una visible'); return; }
+  if(!next.day && !next.rec && !next.vol){ toast('Deja al menos una visible'); return; }
   lLines=next;
   try{ localStorage.setItem(LLKEY, JSON.stringify(lLines)); }catch(e){}
   renderStrength();
@@ -2794,19 +2803,21 @@ function renderStrength(){
   // flojo la seguía jalando abajo aunque el siguiente levantaras más (el usuario la pidió quitar, oct-2026).
   const run=[]; bests.forEach((b,i)=>run.push(Math.max(b, i ? run[i-1] : 0)));
   const span=S.length>1 ? daysBetween(S[0].d, S[S.length-1].d) : 0;
-  $('#lrange').style.display = span>90 ? '' : 'none';
+  $('#lrange').style.display = span>30 ? '' : 'none';
   let i0=0;
-  if(lRange>0 && span>90){ const lim=new Date(today()); lim.setDate(lim.getDate()-lRange+1); const limk=dkey(lim); i0=S.findIndex(l=>l.d>=limk); if(i0<0) i0=S.length; }
-  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0), many=V.length>40;
+  if(lRange>0 && span>30){ const lim=new Date(today()); lim.setDate(lim.getDate()-lRange+1); const limk=dkey(lim); i0=S.findIndex(l=>l.d>=limk); if(i0<0) i0=S.length; }
+  const V=S.slice(i0), vb=bests.slice(i0), vr=run.slice(i0), vv=V.map(sessVol), many=V.length>40;
   document.querySelectorAll('#lleg .lgbtn').forEach(b=>b.classList.toggle('off', !lLines[b.dataset.s]));
   if(S.length<2) $('#lchart').innerHTML='<div class="empty">Registra este ejercicio otro día para ver tu línea de progreso 📈</div>';
   else if(V.length<1) $('#lchart').innerHTML='<div class="empty">Sin registros en este periodo. Prueba con "Todo".</div>';
   else drawChart($('#lchart'),[
+      // volumen de cada sesión (peso × reps de todas las series): otra escala, a la izquierda y punteada
+      lLines.vol && {data:vv.map(Math.round), color:'#a78bfa', y2:true, dash:'5 4', w:many?1.4:2, dots:'last'},
       lLines.rec && {data:vr.map(r1), color:'#c8f560', dots:'last', fill:!lLines.day},
       lLines.day && {data:vb.map(r1), color:'#3fe0c5', fill:true, dots:many?'last':'all', w:many?1.6:2.4}
     ].filter(Boolean), axisDates(V.map(l=>l.d)),
     {h:170, straight:true, dec:true, xv:V.map(l=>fromKey(l.d).getTime()/86400000),
-     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día<br>Tu récord: ${r1(vr[i])}<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
+     tip:i=>`<b>${r1(vb[i])} kg</b> 1RM ese día<br>Tu récord: ${r1(vr[i])} · Volumen: ${fmt(vv[i])} kg<br><small>${shortDate(V[i].d)} · ${V[i].sets.map(s=>fmtSet(V[i].ex,s)).join(', ')}</small>`});
   // historial oculto por defecto (con 3 años eran cientos de filas): se despliega y va de 20 en 20
   if(histFor!==liftSel){ histFor=liftSel; histOpen=false; histN=20; }
   $('#lhistwrap').style.display = histOpen ? 'block' : 'none';
