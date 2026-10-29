@@ -1943,12 +1943,13 @@ function drawChart(host, series, xlabels, opts={}){
   if(!all.length || xlabels.length===0){
     host.innerHTML=`<div class="empty">${opts.empty||'Sin datos todavía'}</div>`; return;
   }
-  const scale=(a,zero)=>{ let lo=Math.min(...a), hi=Math.max(...a);
-    if(lo===hi){lo-=1;hi+=1;}
+  // wide: si todos los valores son iguales abre ±5% (con ±1 la escala de volumen repetía "1.3k" cuatro veces)
+  const scale=(a,zero,wide)=>{ let lo=Math.min(...a), hi=Math.max(...a);
+    if(lo===hi){ const d=wide ? Math.max(1,Math.abs(lo)*0.05) : 1; lo-=d; hi+=d; }
     const sp=hi-lo; lo-=sp*0.12; hi+=sp*0.18;
     return [zero?0:lo, hi]; };
   const [min,max]=scale(all, opts.zeroMin), a2=y2 ? vals(series.filter(s=>s.y2)) : [];
-  const [min2,max2]=a2.length ? scale(a2) : [0,1], c2=y2 ? series.find(s=>s.y2).color : null;
+  const [min2,max2]=a2.length ? scale(a2,false,true) : [0,1], c2=y2 ? series.find(s=>s.y2).color : null;
   const padL=y2?36:10,padR=40,padT=12,padB=24;
   const n=xlabels.length;
   const xv=opts.xv, x0=xv?Math.min(...xv):0, x1=xv?Math.max(...xv):0;
@@ -1957,7 +1958,8 @@ function drawChart(host, series, xlabels, opts={}){
   const Y=v=> padT+(H-padT-padB)*(1-(v-min)/(max-min));
   const Y2=v=> padT+(H-padT-padB)*(1-(v-min2)/(max2-min2));
   series.forEach(s=>{ s._Y = y2 && s.y2 ? Y2 : Y; });
-  const short=v=> max2>=1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));   // toda la escala en "k" si llega a miles
+  // en "k" solo si la escala llega a miles Y abarca bastante; si no, 1.0k/1.0k/1.1k se veían repetidos
+  const short=v=> max2>=1000 && max2-min2>=300 ? (v/1000).toFixed(1)+'k' : fmt(v);
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
   // grid + labels Y
   for(let g=0;g<=3;g++){
