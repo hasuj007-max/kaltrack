@@ -2551,6 +2551,7 @@ const LIB=[
 ['Zancadas con mancuernas','Pierna','Mancuernas','Dumbbell_Lunges'],
 ['Sentadilla búlgara','Pierna','Mancuernas','Split_Squat_with_Dumbbells'],
 ['Elevación de talones (pantorrilla)','Pierna','Máquina','Standing_Calf_Raises'],
+['Elevación de talones sentado (pantorrilla)','Pierna','Máquina','Seated_Calf_Raise'],
 ['Hip thrust con barra','Glúteo','Barra','Barbell_Hip_Thrust'],
 ['Abductores en máquina','Glúteo','Máquina','Thigh_Abductor'],
 ['Aductores en máquina','Glúteo','Máquina','Thigh_Adductor'],
@@ -2634,7 +2635,7 @@ function renderLiftPrev(){
   if(!x){ el.style.display='none'; return; }
   el.style.display='flex';
   const tip={'Mancuernas':'Escribe el peso de UNA mancuerna.','Barra':'Escribe el total: barra + discos (la olímpica pesa 20 kg).',
-    'Máquina':'Escribe el peso que marca la máquina.','Polea':'Escribe el peso que marca la polea.',
+    'Máquina':'Escribe el peso que marca la máquina; si es de discos, la suma de los discos que le pones.','Polea':'Escribe el peso que marca la polea.',
     'Peso corporal':'Pon solo el peso extra (0 si es sin peso); se suma tu peso corporal.'}[x.eq]||'';
   el.innerHTML=`<img src="${exImg(x,0)}" alt=""><img src="${exImg(x,1)}" alt="">
     <div><b>${esc(x.g)} · ${esc(x.eq)}</b><small>${tip}</small></div>`;
