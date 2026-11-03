@@ -2953,7 +2953,7 @@ function resetAll(){
   if(!confirm(nube ? '¿Borrar TODOS los datos, de este teléfono Y de tu respaldo en la nube? Esta acción no se puede deshacer.'
                    : '¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
   localStorage.removeItem(LSKEY);
-  DB=JSON.parse(JSON.stringify(DEFAULTS));
+  DB=JSON.parse(JSON.stringify(DEFAULTS)); migrate();   // migrate completa las casillas que DEFAULTS no trae (exAdd)
   if(nube) Nube.subirYa({permitirVacio:true});   // único caso en que se permite dejar la nube vacía
   selDate=today(); renderAll(); toast('Datos borrados');
   openOnboard();
