@@ -130,7 +130,7 @@ function SIM3Y(FOODS, LIB_BY, endKey, opt={}){
 
   // ---------- simulación día por día ----------
   const DB={onboarded:true, goals:{cal:2400,p:180,c:262,f:70,burn:400},
-    profile:{weight:W0,target:80,age:AGE0+3,height:H,sex:'m',goalType:'bajar',steps:10000,sleepH:7.5,act:'ligero'},
+    profile:{weight:W0,target:80,age:AGE0+3,height:H,sex:'m',goalType:'bajar',steps:10000,sleepH:7.5,act:'1.375'},
     customFoods:[],customEx:[],logs:{},weights:[],favs:[],recents:[],celebratedDays:[],measures:[],lifts:[],liftEx:[],exAdd:false};
   let Fm=W0*0.35, Lm=W0-Fm, G=0;
   const F0=Fm, L0=Lm;

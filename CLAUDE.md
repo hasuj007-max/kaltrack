@@ -65,7 +65,16 @@ Contador de calorías, peso, medidas y pesas. Es la app personal del usuario, in
 - En la PWA instalada de iOS 26, html y body miden la pantalla menos la barra de estado (812 de 874). `100dvh` y `position:fixed` no lo arreglan. Lo arregla un JS: si `screen.height - innerHeight` está entre 0 y 100, pone `#app.style.height = screen.height`.
 - Los campos van a 16px (si no, iOS hace zoom al tocar), con `touch-action:manipulation`.
 - Para un gesto horizontal dentro de algo con scroll usa `touch-action:pan-y` + `setPointerCapture`. Sin eso funciona en escritorio y falla en el iPhone.
-- En SVG no uses `var()` dentro de atributos: va en `style`. Los gauges están rotados 135°, así que el degradado va de .85 a .15.
+- En SVG no uses `var()` dentro de atributos: va en `style` o en una regla CSS (los anillos de Hoy toman su color de `#garc` y `#barc`). Lo que se dibuja desde JS usa la constante `COL`.
+
+## Diseño: estilo "Grafito" (nov-2026)
+El usuario lo eligió entre tres propuestas para que la app se vea "más pro y elegante". Reglas:
+- **Un solo acento, el lima**, y solo para la acción principal (`.btn`, el botón +), el progreso (anillo de calorías, barras, récord) y lo que salió bien. Ámbar = aviso o mejor día, coral = se pasó o va mal.
+- **Lo seleccionado nunca va en lima:** día y chips en claro (`--txt` con texto oscuro); pestañas y segmentos en gris (`--card3`).
+- Sin brillos (`drop-shadow`, `box-shadow` de color) ni degradados. Líneas finas y pesos de letra 500–600, no 700.
+- **Sin emojis en títulos, botones, etiquetas ni avisos.** Solo quedan los de alimentos y ejercicios del catálogo, que ayudan a reconocerlos. Donde hace falta un ícono va uno de línea como `<symbol>` (`#ifork`, `#irun`, `#iflame`…).
+- Los colores viven en `:root` y, para SVG hecho desde JS, en `COL` (mismos valores). No escribas hex sueltos.
+- Los macros de Hoy son tres barras en una tarjeta (antes eran tres anillos).
 
 ## Fuerza
 - El 1RM se estima con Epley. Récord = un 1RM mejor que todos los anteriores.
@@ -77,7 +86,7 @@ Contador de calorías, peso, medidas y pesas. Es la app personal del usuario, in
   | Dominadas y fondos | .95 |
   | Fondos en banco | .6 |
   | Piernas colgado | .34 |
-- La gráfica tiene tres líneas: "Lo que levantaste cada día" (aqua, pasa por cada registro: baja si cargó menos y sube si cargó más), "Tu récord" (lima, nunca baja) y "Volumen por sesión" (violeta punteada, `sessVol` = peso × reps de todas las series). El volumen usa su propia escala a la izquierda (`y2:true` en `drawChart`). Cada línea se apaga tocando su etiqueta (`kaltrack_lineas`). Rangos: 1 mes, 3M, 6M, 1A y Todo (salen si hay más de 30 días de registros).
+- La gráfica tiene tres líneas: "Lo que levantaste cada día" (blanca, pasa por cada registro: baja si cargó menos y sube si cargó más), "Tu récord" (lima, nunca baja) y "Volumen por sesión" (gris punteada, `sessVol` = peso × reps de todas las series). El volumen usa su propia escala a la izquierda (`y2:true` en `drawChart`). Cada línea se apaga tocando su etiqueta (`kaltrack_lineas`). Rangos: 1 mes, 3M, 6M, 1A y Todo (salen si hay más de 30 días de registros).
 - **No volver a poner una "tendencia" promediada.** Hubo una (promedio de los últimos 6 registros) y confundía: un día flojo la seguía jalando hacia abajo aunque el siguiente cargara más. El usuario quiere ver la línea subir y bajar con lo que levanta.
 - Al registrar, las series salen **vacías**, con lo de la última vez en gris (`liftGhost` como placeholder) y la línea "La vez pasada". Ya no se precargan: si guardaba sin cambiar nada, se registraba lo viejo como si fuera de hoy. Una serie a medias (peso sin reps o reps sin peso) no se guarda y avisa.
 - `liftStatus` da récord, estancado (3+ registros y 14+ días sin récord) o "a X% del récord".
