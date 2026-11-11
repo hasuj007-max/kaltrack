@@ -1268,7 +1268,9 @@ const DEFAULTS = {goals:{cal:2600,p:150,c:325,f:72,burn:400}, profile:{weight:nu
   measures:[], lifts:[], liftEx:[]};
 let DB, storeUsed=0, storeFailed=false;
 try{ const raw=localStorage.getItem(LSKEY)||'{}'; storeUsed=raw.length;
-  DB = Object.assign({}, DEFAULTS, unpackDB(JSON.parse(raw))); }
+  // copia de DEFAULTS, no los mismos arreglos: en la primera vez (sin nada guardado) lo registrado caía dentro de
+  // DEFAULTS, y "Borrar todos los datos" lo volvía a copiar de ahí
+  DB = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), unpackDB(JSON.parse(raw))); }
 catch(e){ DB = JSON.parse(JSON.stringify(DEFAULTS)); }
 function migrate(){
   DB.goals = Object.assign({}, DEFAULTS.goals, DB.goals);
