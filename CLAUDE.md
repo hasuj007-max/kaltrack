@@ -91,6 +91,9 @@ El usuario lo eligió entre tres propuestas para que la app se vea "más pro y e
 - Al registrar, las series salen **vacías**, con lo de la última vez en gris (`liftGhost` como placeholder) y la línea "La vez pasada". Ya no se precargan: si guardaba sin cambiar nada, se registraba lo viejo como si fuera de hoy. Una serie a medias (peso sin reps o reps sin peso) no se guarda y avisa.
 - `liftStatus` da récord, estancado (3+ registros y 14+ días sin récord) o "a X% del récord".
 - `LIB` = [nombre, grupo, equipo, foto, bwf]. Un ejercicio nuevo lleva su foto en `ex/` y en `EX_IMGS` de `sw.js`.
+  - En free-exercise-db la foto 0 no siempre es el inicio: revísalas y voltéalas si hace falta.
+  - Las fotos se guardan 7 días en caché (`max-age=604800`). Para cambiar la foto de un ejercicio usa un archivo con **otro nombre**: si reemplazas el mismo archivo, el teléfono sigue mostrando la vieja.
+- **Biblioteca** (nov-2026, a pedido del usuario): solo se ven las 8 categorías (`LGROUPS`) con su número de ejercicios. Al tocar una se abren sus fotos, una categoría a la vez (`libOpen`), y la categoría sube a la vista. Se quitaron los filtros de grupo y de equipo: con los 62 ejercicios a la vista la pantalla medía ~14 pantallas.
 
 ## Comportamientos que ya se corrigieron (no los rompas)
 - `checkNewDay`: si la app queda abierta de un día a otro y estabas viendo "hoy", pasa al nuevo hoy. Si hay una hoja abierta, espera a que se cierre.

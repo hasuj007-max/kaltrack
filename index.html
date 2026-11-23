@@ -234,7 +234,18 @@ h1.title small{display:block;font-size:14px;font-weight:400;color:var(--mut);let
 .hrow .hi small{display:block;font-size:11px;color:var(--mut);font-weight:500;margin-top:2px}
 .hrow .hi i{font-style:normal;color:var(--mut)}
 .prtag{font-size:10.5px;font-weight:600;color:var(--amber);background:#e9b44c1a;border-radius:6px;padding:2px 6px;margin-left:6px;white-space:nowrap}
-.libgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+/* biblioteca: lista de categorías cerradas; al tocar una se abren sus ejercicios (solo una a la vez) */
+.libcats{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);overflow:hidden;margin-bottom:10px}
+.libcat+.libcat{border-top:1px solid var(--line)}
+.lchead{display:flex;align-items:center;gap:10px;width:100%;padding:15px 16px;background:none;border:0;color:var(--txt);font:inherit;cursor:pointer;text-align:left;touch-action:manipulation;scroll-margin-top:calc(12px + env(safe-area-inset-top))}
+.lchead:active{background:var(--card2)}
+.lchead .lcn{flex:1;font-size:15px;font-weight:500}
+.lchead .lcc{font-size:12.5px;color:var(--mut);font-weight:500;font-variant-numeric:tabular-nums}
+.lchead svg{width:16px;height:16px;stroke:var(--dim);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.libcat.open .lchead svg{transform:rotate(90deg)}
+.libcat.open .lchead .lcn{font-weight:600}
+.libgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 12px 12px;animation:fadeIn .22s ease}
+.libgrid .libcard{background:var(--card2)}
 .libcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 0 11px;overflow:hidden;text-align:left;color:var(--txt);font:inherit;cursor:pointer;min-width:0}
 .libcard:active{opacity:.6}
 .libcard img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;background:var(--card2)}
@@ -429,6 +440,7 @@ h1.title small{display:block;font-size:14px;font-weight:400;color:var(--mut);let
     <symbol id="iflame" viewBox="0 0 24 24"><path d="M12 2.5c.8 3.3 4.8 5.6 4.8 10.6a4.8 4.8 0 0 1-9.6 0c0-2.6 1.5-4 2.5-5 .2 1.7.9 2.8 1.9 3 .4-3-1-5.6.4-8.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="igear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01A1.7 1.7 0 0 0 20.91 10H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></symbol>
     <symbol id="iback" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="ichev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
     <symbol id="isun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="idumb" viewBox="0 0 24 24"><path d="M6.5 6v12M17.5 6v12M3.5 9v6M20.5 9v6M6.5 12h11"/></symbol>
     <symbol id="itape" viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="19" height="9" rx="2.5"/><path d="M6.5 7.5v3.5M10.5 7.5v4.5M14.5 7.5v3.5M18.5 7.5v4.5"/></symbol>
@@ -666,10 +678,8 @@ h1.title small{display:block;font-size:14px;font-weight:400;color:var(--mut);let
     <div class="exgrid" id="exgrid"></div>
 
     <h2 class="sect">Biblioteca de ejercicios</h2>
-    <div class="chips" id="libgroups"></div>
-    <div class="chips" id="libequip" style="margin-top:-6px"></div>
-    <div class="libgrid" id="libgrid"></div>
-    <div class="projsub" style="margin:0 2px 8px">Fotos de referencia de free-exercise-db (dominio público). Toca un ejercicio para verlo y registrarlo.</div>
+    <div class="libcats" id="libcats"></div>
+    <div class="projsub" style="margin:0 2px 8px">Toca una categoría para ver sus ejercicios, y un ejercicio para verlo y registrarlo. Fotos de free-exercise-db (dominio público).</div>
   </section>
 
   <!-- ============ MEDIDAS ============ -->
@@ -2550,7 +2560,6 @@ const LIB=[
 ].map(([n,g,eq,img,bwf])=>({n,g,eq,img,bw:!!bwf,bwf:bwf||0}));
 const LIB_BY=Object.fromEntries(LIB.map(x=>[x.n,x]));
 const LGROUPS=['Pecho','Espalda','Hombro','Bíceps','Tríceps','Pierna','Glúteo','Abdomen'];
-const LEQUIP=['Máquina','Mancuernas','Barra','Polea','Peso corporal'];
 const exImg=(x,n)=>`ex/${x.img}-${n}.jpg`;
 // En ejercicios de peso corporal el campo kg es peso EXTRA. La carga real es la parte de tu peso que mueves
 // (en una lagartija ~64%, en una dominada ~95%) + el extra, y con tu peso DE ESE DÍA: con el de hoy,
@@ -2692,19 +2701,26 @@ function saveLift(){
 }
 
 /* ---- biblioteca con fotos ---- */
-let libGroup='Todos', libEquip='Todos';
+// El usuario pidió (nov-2026) ver solo las categorías y que se abran al tocarlas: con los 62 ejercicios
+// a la vista, la pantalla de Fuerza medía ~14 pantallas. Solo una categoría abierta a la vez.
+let libOpen=null;
 function renderLibrary(){
-  const chip=(v,cur,attr)=>`<button class="chip2 ${v===cur?'on':''}" data-${attr}="${esc(v)}">${esc(v)}</button>`;
-  $('#libgroups').innerHTML=['Todos',...LGROUPS].map(g=>chip(g,libGroup,'g')).join('');
-  $('#libequip').innerHTML=['Todos',...LEQUIP].map(e=>chip(e,libEquip,'e')).join('');
-  document.querySelectorAll('#libgroups .chip2').forEach(b=>b.addEventListener('click',()=>{ libGroup=b.dataset.g; renderLibrary(); }));
-  document.querySelectorAll('#libequip .chip2').forEach(b=>b.addEventListener('click',()=>{ libEquip=b.dataset.e; renderLibrary(); }));
-  const list=LIB.filter(x=>(libGroup==='Todos'||x.g===libGroup)&&(libEquip==='Todos'||x.eq===libEquip));
-  $('#libgrid').innerHTML = list.length ? list.map(x=>`<button class="libcard" data-n="${esc(x.n)}">
-      <img src="${exImg(x,0)}" alt="" loading="lazy">
-      <div class="lbn">${esc(x.n)}</div><div class="lbs">${esc(x.g)} · ${esc(x.eq)}</div></button>`).join('')
-    : '<div class="emptylog" style="grid-column:1/-1">No hay ejercicios con ese filtro.</div>';
-  document.querySelectorAll('#libgrid .libcard').forEach(b=>b.addEventListener('click',()=>openExInfo(b.dataset.n)));
+  $('#libcats').innerHTML=LGROUPS.map(g=>{
+    const list=LIB.filter(x=>x.g===g), open=g===libOpen;
+    return `<div class="libcat ${open?'open':''}">
+      <button class="lchead" data-g="${esc(g)}" aria-expanded="${open}"><span class="lcn">${esc(g)}</span><span class="lcc">${list.length}</span><svg viewBox="0 0 24 24"><use href="#ichev"/></svg></button>
+      ${open ? `<div class="libgrid">${list.map(x=>`<button class="libcard" data-n="${esc(x.n)}">
+        <img src="${exImg(x,0)}" alt="" loading="lazy">
+        <div class="lbn">${esc(x.n)}</div><div class="lbs">${esc(x.eq)}</div></button>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#libcats .lchead').forEach(b=>b.addEventListener('click',()=>{
+    libOpen = libOpen===b.dataset.g ? null : b.dataset.g;
+    renderLibrary();
+    // que la categoría abierta quede arriba a la vista (si estaba abierta otra más arriba, la lista se recorre)
+    if(libOpen){ const h=$(`#libcats .lchead[data-g="${libOpen}"]`); if(h) h.scrollIntoView({block:'start', behavior:'smooth'}); }
+  }));
+  document.querySelectorAll('#libcats .libcard').forEach(b=>b.addEventListener('click',()=>openExInfo(b.dataset.n)));
 }
 function openExInfo(n){
   const x=LIB_BY[n]; if(!x) return;
